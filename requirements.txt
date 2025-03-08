@@ -1,0 +1,6 @@
+# Core dependencies
+python-sat>=0.1.7.dev12
+colorama>=0.4.4
+
+# Development dependencies
+pytest>=7.0.0 
