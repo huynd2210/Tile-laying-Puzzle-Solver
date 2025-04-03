@@ -1,4 +1,4 @@
-from piece import Piece
+from backend.piece import Piece
 
 #Piece are defined as follows (example):
 #Piece(i1, j1, i2, j2, i3, j3 ...etc, color="white")

@@ -13,11 +13,11 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, JSON
 
-from board import Board
-from piece import Piece as PythonPiece  # Renaming to avoid confusion
-from TilingPuzzle import TilingPuzzle
-from pieceLibrary import test_piece_library
-from utils import normalize  # For normalizing piece orientations
+from backend.board import Board
+from backend.piece import Piece as PythonPiece  # Renaming to avoid confusion
+from backend.TilingPuzzle import TilingPuzzle
+from backend.pieceLibrary import test_piece_library
+from backend.utils import normalize  # For normalizing piece orientations
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)  # Required for session management

@@ -1,4 +1,4 @@
-from board import Board
+from backend.board import Board
 import colorama
 from colorama import Fore, Back, Style
 
