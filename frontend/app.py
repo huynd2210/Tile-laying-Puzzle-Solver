@@ -4,6 +4,11 @@ import json
 import os
 import uuid
 import datetime
+import sys
+
+# Add parent directory to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, JSON
@@ -17,7 +22,7 @@ from utils import normalize  # For normalizing piece orientations
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)  # Required for session management
 CORS(app)  # Enable CORS for all routes
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///polyomino.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../instance/polyomino.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
