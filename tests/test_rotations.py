@@ -1,8 +1,14 @@
 import unittest
-from piece import Piece
-from utils import normalize
-from TilingPuzzle import TilingPuzzle
-from board import Board
+import sys
+import os
+
+# Add parent directory to system path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.piece import Piece
+from backend.utils import normalize
+from backend.TilingPuzzle import TilingPuzzle
+from backend.board import Board
 
 
 class TestPieceRotations(unittest.TestCase):

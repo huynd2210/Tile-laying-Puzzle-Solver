@@ -1,5 +1,5 @@
-from coordinate import Coordinate
-from utils import normalize
+from backend.coordinate import Coordinate
+from backend.utils import normalize
 
 
 class Piece:

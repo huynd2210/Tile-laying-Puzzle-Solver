@@ -2,8 +2,8 @@ from pysat.card import CardEnc
 from pysat.formula import CNF
 from pysat.solvers import Solver
 
-from CandidatePlacement import CandidatePlacement
-from board import Board
+from backend.CandidatePlacement import CandidatePlacement
+from backend.board import Board
 
 
 class TilingPuzzle:

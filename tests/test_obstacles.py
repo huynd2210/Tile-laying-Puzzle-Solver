@@ -1,8 +1,14 @@
 import unittest
-from board import Board
-from piece import Piece
-from TilingPuzzle import TilingPuzzle
-from pieceLibrary import test_piece_library
+import sys
+import os
+
+# Add parent directory to system path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.board import Board
+from backend.piece import Piece
+from backend.TilingPuzzle import TilingPuzzle
+from backend.pieceLibrary import test_piece_library
 
 
 class TestBoardObstacles(unittest.TestCase):

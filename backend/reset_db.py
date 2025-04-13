@@ -65,9 +65,15 @@ def extract_piece_offsets(piece_obj):
 
 def reset_database():
     """Delete the existing database file and recreate it"""
-    db_path = 'polyomino.db'
+    # Use environment variable DB_PATH if it's set, otherwise use default
+    db_path = os.environ.get('DB_PATH', 'polyomino.db')
     
-    print("Resetting database...")
+    print(f"Resetting database at: {db_path}")
+    
+    # Create directory if it doesn't exist
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir)
     
     # Delete the database file if it exists
     if os.path.exists(db_path):
