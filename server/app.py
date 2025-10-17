@@ -163,6 +163,42 @@ def initialize_storage():
     _ensure_builtin_library()
 
 
+def _orientation_signature(orientation):
+    # orientation: tuple of (i,j)
+    coords = sorted(list(orientation))
+    return ';'.join(f"{i}:{j}" for i, j in coords)
+
+
+def _shape_signature(piece_obj):
+    try:
+        orientations = piece_obj.get_orientations()
+        if not orientations:
+            # fallback to offsets
+            if hasattr(piece_obj, 'get_offsets'):
+                base = getattr(piece_obj, 'get_offsets')()
+                orientations = [normalize(tuple(base))]
+        # Pick lexicographically smallest normalized string among orientations
+        sigs = [_orientation_signature(o) for o in orientations]
+        return min(sigs) if sigs else ''
+    except Exception:
+        return ''
+
+
+def _group_equivalent_pieces(piece_lib: dict):
+    grouped = {}
+    seen = {}
+    id_map = {}
+    for pid, pobj in piece_lib.items():
+        sig = _shape_signature(pobj)
+        if sig in seen:
+            id_map[pid] = seen[sig]
+            continue
+        seen[sig] = pid
+        grouped[pid] = pobj
+        id_map[pid] = pid
+    return grouped, id_map
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -182,6 +218,7 @@ def solve_puzzle():
             max_solutions = 1
         persist = bool(data.get('persist', False))
         save_name = str(data.get('save_name', '')).strip() or f"Solution {datetime.datetime.utcnow().isoformat()}"
+        dedupe_equivalent = bool(data.get('dedupe_equivalent', True))
 
         obstacle_positions = [(i, j) for i, j in obstacles]
 
@@ -202,7 +239,24 @@ def solve_puzzle():
         if not piece_lib:
             return jsonify({'success': False, 'message': 'No valid pieces selected for solving the puzzle.'})
 
-        puzzle = TilingPuzzle(board, piece_lib)
+        # Optionally dedupe equivalent shapes to avoid recomputation
+        lib_for_solver = piece_lib
+        canonical_of = {pid: pid for pid in piece_lib.keys()}
+        if dedupe_equivalent:
+            lib_for_solver, canonical_of = _group_equivalent_pieces(piece_lib)
+
+        # Build reverse map canonical -> representative original id (prefer first in selected_pieces order)
+        rep_of = {}
+        # Preference by selected order
+        for pid in selected_pieces:
+            canon = canonical_of.get(pid, pid)
+            if canon not in rep_of:
+                rep_of[canon] = pid
+        # Fill remaining
+        for pid, canon in canonical_of.items():
+            rep_of.setdefault(canon, pid)
+
+        puzzle = TilingPuzzle(board, lib_for_solver)
         threads = data.get('threads')
         try:
             threads = int(threads) if threads is not None else None
@@ -219,9 +273,12 @@ def solve_puzzle():
         for sol in solutions:
             sdata = []
             for cand in sol:
-                color = getattr(piece_lib[cand.piece_id], 'color', None) or 'red'
+                canon_id = cand.piece_id
+                orig_id = rep_of.get(canon_id, canon_id)
+                src_piece = piece_lib.get(orig_id) or lib_for_solver.get(canon_id)
+                color = getattr(src_piece, 'color', None) or 'red'
                 sdata.append({
-                    'id': cand.piece_id,
+                    'id': orig_id,
                     'color': color,
                     'cells': cand.cells,
                     'orientation': cand.orientation,

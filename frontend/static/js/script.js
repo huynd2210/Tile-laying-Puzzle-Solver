@@ -881,6 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const v = parseInt(document.getElementById('solver-threads').value);
                     return isNaN(v) || v < 1 ? undefined : v;
                 })(),
+                dedupe_equivalent: document.getElementById('dedupe-equivalent').checked,
                 persist: document.getElementById('persist-solutions').checked,
                 save_name: document.getElementById('save-name').value || ''
             };
