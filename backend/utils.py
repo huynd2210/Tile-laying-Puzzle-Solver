@@ -9,6 +9,8 @@ def normalize(offsets):
     """
     Given a list of (i,j) tuples, shift them so that the smallest i and j become 0.
     """
+    if not offsets:
+        return tuple()
     min_i = min(i for i, j in offsets)
     min_j = min(j for i, j in offsets)
     return tuple(sorted(((i - min_i, j - min_j) for i, j in offsets)))

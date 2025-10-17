@@ -911,6 +911,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return isNaN(v) || v < 1 ? undefined : v;
                 })(),
                 dedupe_equivalent: document.getElementById('dedupe-equivalent').checked,
+                allow_reflections: document.getElementById('allow-reflections').checked,
+                allow_rotations: document.getElementById('allow-rotations').checked,
                 persist: document.getElementById('persist-solutions').checked,
                 save_name: document.getElementById('save-name').value || ''
             };

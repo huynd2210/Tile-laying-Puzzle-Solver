@@ -122,18 +122,28 @@ class JSONPieceAdapter:
         self.name = piece_dict.get('name')
         self.color = piece_dict.get('color')
         self.cells = piece_dict.get('cells') or []
+        self.allow_reflections = piece_dict.get('allow_reflections', True)
+        self.allow_rotations = piece_dict.get('allow_rotations', True)
 
     def get_offsets(self):
         return tuple(tuple(coord) for coord in self.cells)
 
-    def get_orientations(self):
+    def get_orientations(self, allow_reflections=None, allow_rotations=None):
         base = self.get_offsets()
-        transforms = [
-            lambda i, j: (i, j),
-            lambda i, j: (-j, i),
-            lambda i, j: (-i, -j),
-            lambda i, j: (j, -i)
-        ]
+        if not base:
+            return []
+        use_rot = self.allow_rotations if allow_rotations is None else allow_rotations
+        if use_rot:
+            transforms = [
+                lambda i, j: (i, j),
+                lambda i, j: (-j, i),
+                lambda i, j: (-i, -j),
+                lambda i, j: (j, -i)
+            ]
+        else:
+            transforms = [
+                lambda i, j: (i, j)
+            ]
         orientations = set()
         orientation_list = []
         for t in transforms:
@@ -142,11 +152,13 @@ class JSONPieceAdapter:
             if norm not in orientations:
                 orientations.add(norm)
                 orientation_list.append(norm)
-            flipped = tuple((-u, v) for u, v in transformed)
-            norm_flipped = normalize(flipped)
-            if norm_flipped not in orientations:
-                orientations.add(norm_flipped)
-                orientation_list.append(norm_flipped)
+            use_reflect = self.allow_reflections if allow_reflections is None else allow_reflections
+            if use_reflect:
+                flipped = tuple((-u, v) for u, v in transformed)
+                norm_flipped = normalize(flipped)
+                if norm_flipped not in orientations:
+                    orientations.add(norm_flipped)
+                    orientation_list.append(norm_flipped)
         return orientation_list
 
 
@@ -176,7 +188,8 @@ def _shape_signature(piece_obj):
             # fallback to offsets
             if hasattr(piece_obj, 'get_offsets'):
                 base = getattr(piece_obj, 'get_offsets')()
-                orientations = [normalize(tuple(base))]
+                base_norm = normalize(tuple(base))
+                orientations = [base_norm] if base_norm else []
         # Pick lexicographically smallest normalized string among orientations
         sigs = [_orientation_signature(o) for o in orientations]
         return min(sigs) if sigs else ''
@@ -205,7 +218,8 @@ def _normalized_orientation(piece_obj):
         if not orientations:
             if hasattr(piece_obj, 'get_offsets'):
                 base = getattr(piece_obj, 'get_offsets')()
-                orientations = [normalize(tuple(base))]
+                base_norm = normalize(tuple(base))
+                orientations = [base_norm] if base_norm else []
         # Choose canonical orientation by string order
         if not orientations:
             return []
@@ -237,6 +251,12 @@ def solve_puzzle():
         persist = bool(data.get('persist', False))
         save_name = str(data.get('save_name', '')).strip() or f"Solution {datetime.datetime.utcnow().isoformat()}"
         dedupe_equivalent = bool(data.get('dedupe_equivalent', True))
+        allow_reflections = data.get('allow_reflections')
+        if allow_reflections is None:
+            allow_reflections = True
+        allow_rotations = data.get('allow_rotations')
+        if allow_rotations is None:
+            allow_rotations = True
 
         obstacle_positions = [(i, j) for i, j in obstacles]
 
@@ -249,7 +269,7 @@ def solve_puzzle():
             piece_lib = test_piece_library if not selected_pieces else {k: test_piece_library[k] for k in selected_pieces if k in test_piece_library}
         else:
             pieces = _list_pieces_for_library(library_id)
-            pdict = {p['name']: JSONPieceAdapter(p) for p in pieces}
+            pdict = {p['name']: JSONPieceAdapter({**p, 'allow_reflections': allow_reflections, 'allow_rotations': allow_rotations}) for p in pieces}
             for pid in selected_pieces:
                 if pid in pdict:
                     piece_lib[pid] = pdict[pid]
@@ -274,6 +294,18 @@ def solve_puzzle():
         for pid, canon in canonical_of.items():
             rep_of.setdefault(canon, pid)
 
+        # If builtin and flipping disabled, wrap builtin pieces via adapter to enforce
+        if library_id == 'builtin' and (allow_reflections is False or allow_rotations is False):
+            lib_for_solver = {
+                pid: JSONPieceAdapter({
+                    'name': pid,
+                    'color': getattr(p, 'color', None),
+                    'cells': [[i, j] for (i, j) in (p.get_offsets() if hasattr(p, 'get_offsets') else [])],
+                    'allow_reflections': allow_reflections,
+                    'allow_rotations': allow_rotations
+                })
+                for pid, p in lib_for_solver.items()
+            }
         puzzle = TilingPuzzle(board, lib_for_solver)
         threads = data.get('threads')
         try:

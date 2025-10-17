@@ -38,7 +38,7 @@ class Piece:
         """
         return tuple((coord.i, coord.j) for coord in self.offsetValues)
 
-    def get_orientations(self):
+    def get_orientations(self, allow_reflections=True, allow_rotations=True):
         """
         Generate all distinct orientations of the piece.
 
@@ -49,15 +49,22 @@ class Piece:
         Returns a list of orientations. Each orientation is a tuple of (i,j) offset pairs.
         """
         base = self.get_offsets()
+        if not base:
+            return []
         # Define transformation functions:
         # identity, rotate 90: (i,j) -> (-j, i), rotate 180: (i,j) -> (-i, -j),
         # rotate 270: (i,j) -> (j, -i)
-        transforms = [
-            lambda i, j: (i, j),
-            lambda i, j: (-j, i),
-            lambda i, j: (-i, -j),
-            lambda i, j: (j, -i)
-        ]
+        if allow_rotations:
+            transforms = [
+                lambda i, j: (i, j),
+                lambda i, j: (-j, i),
+                lambda i, j: (-i, -j),
+                lambda i, j: (j, -i)
+            ]
+        else:
+            transforms = [
+                lambda i, j: (i, j)
+            ]
         # For each transform, also consider horizontal flip (mirroring j coordinate)
         orientations = set()
         orientation_list = []
@@ -67,12 +74,13 @@ class Piece:
             if norm not in orientations:
                 orientations.add(norm)
                 orientation_list.append(norm)
-            # Apply horizontal flip on top of the transformation.
-            flipped = tuple((-u, v) for u, v in transformed)
-            norm_flipped = normalize(flipped)
-            if norm_flipped not in orientations:
-                orientations.add(norm_flipped)
-                orientation_list.append(norm_flipped)
+            if allow_reflections:
+                # Apply horizontal flip on top of the transformation.
+                flipped = tuple((-u, v) for u, v in transformed)
+                norm_flipped = normalize(flipped)
+                if norm_flipped not in orientations:
+                    orientations.add(norm_flipped)
+                    orientation_list.append(norm_flipped)
         return orientation_list
 
     def __str__(self):
