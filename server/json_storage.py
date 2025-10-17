@@ -103,7 +103,14 @@ def save_solutions(solutions: List[Dict[str, Any]]) -> None:
         json.dump(solutions, f, ensure_ascii=False, indent=2)
 
 
-def add_solution_record(name: str, board: Dict[str, Any], library_id: str, selected_pieces: List[str], solutions_payload: List[List[Dict[str, Any]]]) -> Dict[str, Any]:
+def _get_library_name(library_id: str) -> str:
+    for lib in load_libraries_index():
+        if lib.get('id') == library_id:
+            return lib.get('name') or library_id
+    return library_id
+
+
+def add_solution_record(name: str, board: Dict[str, Any], library_id: str, library_name: str, selected_pieces: List[str], solutions_payload: List[List[Dict[str, Any]]]) -> Dict[str, Any]:
     rec_id = str(uuid.uuid4())
     now = current_iso_time()
     record = {
@@ -112,6 +119,7 @@ def add_solution_record(name: str, board: Dict[str, Any], library_id: str, selec
         'created_at': now,
         'board': board,
         'library_id': library_id,
+        'library': library_name or _get_library_name(library_id),
         'pieces': selected_pieces,
         'solutions': solutions_payload,
         'num_solutions': len(solutions_payload)
@@ -125,6 +133,9 @@ def add_solution_record(name: str, board: Dict[str, Any], library_id: str, selec
 def find_solution_by_id(solution_id: str) -> Dict[str, Any]:
     for rec in load_solutions():
         if rec.get('id') == solution_id:
+            # Ensure library name present in response
+            if 'library' not in rec:
+                rec = {**rec, 'library': _get_library_name(rec.get('library_id'))}
             return rec
     return None
 
@@ -139,6 +150,7 @@ def list_solution_summaries() -> List[Dict[str, Any]]:
             'created_at': rec.get('created_at'),
             'num_solutions': rec.get('num_solutions'),
             'library_id': rec.get('library_id'),
+            'library': rec.get('library') or _get_library_name(rec.get('library_id')),
             'board': {
                 'width': board.get('width'),
                 'height': board.get('height')

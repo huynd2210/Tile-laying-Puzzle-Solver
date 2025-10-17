@@ -96,7 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success && Array.isArray(data.solutions) && data.solutions.length > 0) {
                 data.solutions.forEach(s => {
                     const opt = document.createElement('option');
-                    const meta = `${s.name || s.id} (${s.board.width}x${s.board.height}, ${s.num_solutions} sol)`;
+                    const libLabel = s.library || s.library_id || 'unknown';
+                    const meta = `${s.name || s.id} (${libLabel}; ${s.board.width}x${s.board.height}, ${s.num_solutions} sol)`;
                     opt.value = s.id;
                     opt.textContent = meta;
                     selector.appendChild(opt);
@@ -123,6 +124,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await resp.json();
             if (!data.success) throw new Error(data.message || 'Unknown error');
             const record = data.record;
+            // Optional: show library name if provided
+            if (record.library) {
+                showMessage(`Loaded from "${record.library}" (${record.board.width}x${record.board.height})`, false);
+            }
             // set board
             state.width = record.board.width;
             state.height = record.board.height;
@@ -143,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.solution = current;
             updateSolutionNav();
             displaySolution(current);
-            showMessage(`Loaded saved solutions (${state.solutions.length}).`, false);
+            // keep message concise; previous showMessage may already print
         } catch (e) {
             console.error('Error loading saved solutions:', e);
             showMessage('Error loading saved solutions: ' + e.message, true);

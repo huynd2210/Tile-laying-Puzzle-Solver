@@ -237,7 +237,10 @@ def solve_puzzle():
 
         if persist:
             try:
-                rec = add_solution_record(save_name, {'width': width, 'height': height, 'obstacles': obstacle_positions}, library_id, selected_pieces, serialized)
+                libraries = _list_libraries_index()
+                lib = next((l for l in libraries if l.get('id') == library_id), None)
+                library_name = lib.get('name') if lib else library_id
+                rec = add_solution_record(save_name, {'width': width, 'height': height, 'obstacles': obstacle_positions}, library_id, library_name, selected_pieces, serialized)
                 response_payload['saved'] = True
                 response_payload['saved_id'] = rec.get('id')
             except Exception as e:
