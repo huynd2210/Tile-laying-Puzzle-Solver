@@ -1,0 +1,37 @@
+[
+  {
+    "id": "builtin",
+    "name": "Built-in Pieces",
+    "editable": false,
+    "created_at": "2025-03-08 19:29:35.030618",
+    "updated_at": "2025-03-08 19:29:35.030618"
+  },
+  {
+    "id": "test_pieces",
+    "name": "Test Pieces",
+    "editable": true,
+    "created_at": "2025-03-08 19:32:33.563737",
+    "updated_at": "2025-03-08 19:32:33.563737"
+  },
+  {
+    "id": "main_pieces",
+    "name": "Main Pieces",
+    "editable": false,
+    "created_at": "2025-03-08 19:40:09.011903",
+    "updated_at": "2025-03-08 19:40:09.011903"
+  },
+  {
+    "id": "patchwork_pieces",
+    "name": "Patchwork Pieces",
+    "editable": false,
+    "created_at": "2025-03-08 19:40:09.064195",
+    "updated_at": "2025-03-08 19:40:09.064195"
+  },
+  {
+    "id": "8b40287b-0e06-4cb9-b62c-947005a80586",
+    "name": "Patchwork",
+    "editable": true,
+    "created_at": "2025-03-09 00:43:08.297764",
+    "updated_at": "2025-03-09 00:43:08.297764"
+  }
+]

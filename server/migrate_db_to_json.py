@@ -19,6 +19,7 @@ def ensure_dir(path: str) -> None:
 
 
 def export_db_to_json(db_path: str, json_path: str) -> None:
+    # Legacy exporter to monolith JSON for backward compatibility
     ensure_dir(json_path)
     if not os.path.exists(db_path):
         raise FileNotFoundError(f"Database file not found: {db_path}")

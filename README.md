@@ -20,9 +20,12 @@ This starts the Flask UI and will automatically migrate any existing SQLite data
 
 ### Storage (JSON, no .db)
 
-- The app now uses a JSON file instead of SQLite.
-- Location: `instance/polyomino.json`.
-- On startup, if `polyomino.json` is missing but a `polyomino.db` exists (either at `frontend/instance/polyomino.db` or `instance/polyomino.db`), the app exports all libraries and pieces into the JSON file automatically.
+- The app now uses split JSON storage instead of SQLite.
+- Location: under `instance/`:
+  - `libraries.json`: libraries index
+  - `libraries/<library_id>.json`: pieces for each library
+  - `solutions.json`: saved solutions
+- If an older monolithic `instance/polyomino.json` exists, it is auto-migrated on startup into the split layout (and the old file is backed up as `polyomino.json.bak`).
 - You can also run the migration manually:
 
 ```

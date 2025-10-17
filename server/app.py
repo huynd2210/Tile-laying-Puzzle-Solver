@@ -15,11 +15,12 @@ from backend.pieceLibrary import test_piece_library
 from backend.utils import normalize
 
 from server.json_storage import (
-    load_all as storage_load,
-    save_all as storage_save,
     current_iso_time,
-    set_libraries,
-    set_pieces,
+    ensure_storage_initialized,
+    load_libraries_index,
+    save_libraries_index,
+    read_library_pieces,
+    write_library_pieces,
     add_solution_record,
     list_solution_summaries,
     find_solution_by_id,
@@ -32,14 +33,6 @@ app.secret_key = os.urandom(24)
 CORS(app)
 
 
-def _load_data():
-    return storage_load()
-
-
-def _save_data(data):
-    storage_save(data)
-
-
 def _find_library(data, library_id):
     for lib in data.get('libraries', []):
         if lib.get('id') == library_id:
@@ -47,17 +40,16 @@ def _find_library(data, library_id):
     return None
 
 
-def _list_libraries(data):
-    return data.get('libraries', [])
+def _list_libraries_index():
+    return load_libraries_index()
 
 
-def _list_pieces_for_library(data, library_id):
-    return [p for p in data.get('pieces', []) if p.get('library_id') == library_id]
+def _list_pieces_for_library(library_id):
+    return read_library_pieces(library_id)
 
 
 def _ensure_builtin_library():
-    data = _load_data()
-    libraries = _list_libraries(data)
+    libraries = _list_libraries_index()
     if not any(lib.get('id') == 'builtin' for lib in libraries):
         libraries.append({
             'id': 'builtin',
@@ -66,13 +58,11 @@ def _ensure_builtin_library():
             'created_at': current_iso_time(),
             'updated_at': current_iso_time()
         })
-        set_libraries(data, libraries)
-        _save_data(data)
+        save_libraries_index(libraries)
 
 
 def _add_library(name):
-    data = _load_data()
-    libraries = _list_libraries(data)
+    libraries = _list_libraries_index()
     import uuid
     library_id = str(uuid.uuid4())
     now = current_iso_time()
@@ -83,36 +73,33 @@ def _add_library(name):
         'created_at': now,
         'updated_at': now
     })
-    set_libraries(data, libraries)
-    _save_data(data)
+    save_libraries_index(libraries)
     return _find_library(data, library_id)
 
 
 def _update_library(library_id, name):
-    data = _load_data()
-    libraries = _list_libraries(data)
+    libraries = _list_libraries_index()
     for lib in libraries:
         if lib.get('id') == library_id:
             lib['name'] = name
             lib['updated_at'] = current_iso_time()
             break
-    set_libraries(data, libraries)
-    _save_data(data)
+    save_libraries_index(libraries)
     return _find_library(data, library_id)
 
 
 def _delete_library(library_id):
-    data = _load_data()
-    libraries = [lib for lib in _list_libraries(data) if lib.get('id') != library_id]
-    pieces = [p for p in data.get('pieces', []) if p.get('library_id') != library_id]
-    set_libraries(data, libraries)
-    set_pieces(data, pieces)
-    _save_data(data)
+    libraries = [lib for lib in _list_libraries_index() if lib.get('id') != library_id]
+    save_libraries_index(libraries)
+    # Remove per-library file
+    try:
+        os.remove(os.path.join(os.path.join(ROOT_DIR, 'instance', 'libraries'), f'{library_id}.json'))
+    except Exception:
+        pass
 
 
 def _add_piece(library_id, name, color, cells):
-    data = _load_data()
-    pieces = data.get('pieces', [])
+    pieces = read_library_pieces(library_id)
     if any(p.get('library_id') == library_id and p.get('name') == name for p in pieces):
         return None
     pieces.append({
@@ -121,16 +108,13 @@ def _add_piece(library_id, name, color, cells):
         'color': color,
         'cells': cells
     })
-    set_pieces(data, pieces)
-    _save_data(data)
+    write_library_pieces(library_id, pieces)
     return {'id': name, 'color': color, 'offsets': cells}
 
 
 def _delete_piece(library_id, name):
-    data = _load_data()
-    pieces = [p for p in data.get('pieces', []) if not (p.get('library_id') == library_id and p.get('name') == name)]
-    set_pieces(data, pieces)
-    _save_data(data)
+    pieces = [p for p in read_library_pieces(library_id) if not (p.get('library_id') == library_id and p.get('name') == name)]
+    write_library_pieces(library_id, pieces)
 
 
 class JSONPieceAdapter:
@@ -168,20 +152,14 @@ class JSONPieceAdapter:
 
 def initialize_storage():
     ROOT_INSTANCE = os.path.join(ROOT_DIR, 'instance')
-    json_path = os.path.join(ROOT_INSTANCE, 'polyomino.json')
     db_candidates = [
         os.path.join(ROOT_DIR, 'frontend', 'instance', 'polyomino.db'),
         os.path.join(ROOT_DIR, 'instance', 'polyomino.db'),
     ]
-    if not os.path.exists(json_path):
-        for db_path in db_candidates:
-            if os.path.exists(db_path):
-                try:
-                    print(f"JSON storage not found. Migrating from DB: {db_path}")
-                    export_db_to_json(db_path, json_path)
-                    break
-                except Exception as e:
-                    print(f"Automatic migration failed: {e}")
+    # Ensure split storage; if monolith exists, migration will handle it
+    ensure_storage_initialized()
+    # If DB exists but no split storage yet, allow optional DB migration into split monolith path first
+    # Skipping automatic DB migration now that split storage exists
     _ensure_builtin_library()
 
 
@@ -215,8 +193,7 @@ def solve_puzzle():
         if library_id == 'builtin':
             piece_lib = test_piece_library if not selected_pieces else {k: test_piece_library[k] for k in selected_pieces if k in test_piece_library}
         else:
-            sdata = _load_data()
-            pieces = _list_pieces_for_library(sdata, library_id)
+            pieces = _list_pieces_for_library(library_id)
             pdict = {p['name']: JSONPieceAdapter(p) for p in pieces}
             for pid in selected_pieces:
                 if pid in pdict:
@@ -260,8 +237,7 @@ def solve_puzzle():
 
         if persist:
             try:
-                store = _load_data()
-                rec = add_solution_record(store, save_name, {'width': width, 'height': height, 'obstacles': obstacle_positions}, library_id, selected_pieces, serialized)
+                rec = add_solution_record(save_name, {'width': width, 'height': height, 'obstacles': obstacle_positions}, library_id, selected_pieces, serialized)
                 response_payload['saved'] = True
                 response_payload['saved_id'] = rec.get('id')
             except Exception as e:
@@ -276,8 +252,7 @@ def solve_puzzle():
 @app.route('/api/solutions', methods=['GET'])
 def list_solutions():
     try:
-        data = _load_data()
-        return jsonify({'success': True, 'solutions': list_solution_summaries(data)})
+        return jsonify({'success': True, 'solutions': list_solution_summaries()})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -285,8 +260,7 @@ def list_solutions():
 @app.route('/api/solutions/<solution_id>', methods=['GET'])
 def get_solution(solution_id):
     try:
-        data = _load_data()
-        rec = find_solution_by_id(data, solution_id)
+        rec = find_solution_by_id(solution_id)
         if not rec:
             return jsonify({'success': False, 'message': f'Solution {solution_id} not found'}), 404
         return jsonify({'success': True, 'record': rec})
@@ -298,8 +272,7 @@ def get_solution(solution_id):
 @app.route('/api/libraries', methods=['GET'])
 def get_libraries():
     try:
-        data = _load_data()
-        libraries = _list_libraries(data)
+        libraries = _list_libraries_index()
         libraries_dict = {lib.get('id'): lib for lib in libraries}
         return jsonify(libraries_dict)
     except Exception as e:
@@ -319,12 +292,12 @@ def get_library_pieces(library_id):
                 }
             return jsonify(pieces_dict)
 
-        data = _load_data()
+        data = {'libraries': _list_libraries_index()}
         lib = _find_library(data, library_id)
         if not lib:
             return jsonify({"error": f"Library with id {library_id} not found"}), 404
 
-        pieces = _list_pieces_for_library(data, library_id)
+        pieces = _list_pieces_for_library(library_id)
         pieces_dict = {}
         for piece in pieces:
             offsets = piece.get('cells') or []
