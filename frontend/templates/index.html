@@ -36,6 +36,15 @@
                                 <small class="text-muted">Search for more solutions (can be slower).</small>
                             </div>
                         </div>
+                        <div class="row mb-2">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="find-all-solutions">
+                                    <label class="form-check-label" for="find-all-solutions">Find all solutions (no cap)</label>
+                                </div>
+                                <small class="text-muted">May take a long time on large boards.</small>
+                            </div>
+                        </div>
                         <div class="row mb-3">
                             <div class="col-12">
                                 <div class="form-check">
@@ -113,6 +122,16 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="mb-2 d-flex align-items-center">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="piece-view" id="view-normal" value="normal" checked>
+                                <label class="form-check-label" for="view-normal">Normal view</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="piece-view" id="view-canonical" value="canonical">
+                                <label class="form-check-label" for="view-canonical">Canonical view</label>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label for="library-selector" class="form-label">Select Library:</label>
                             <select id="library-selector" class="form-select">

@@ -199,6 +199,22 @@ def _group_equivalent_pieces(piece_lib: dict):
     return grouped, id_map
 
 
+def _normalized_orientation(piece_obj):
+    try:
+        orientations = piece_obj.get_orientations()
+        if not orientations:
+            if hasattr(piece_obj, 'get_offsets'):
+                base = getattr(piece_obj, 'get_offsets')()
+                orientations = [normalize(tuple(base))]
+        # Choose canonical orientation by string order
+        if not orientations:
+            return []
+        best = min(orientations, key=lambda o: _orientation_signature(o))
+        return [[i, j] for (i, j) in best]
+    except Exception:
+        return []
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -213,8 +229,10 @@ def solve_puzzle():
         obstacles = data.get('obstacles', [])
         selected_pieces = data.get('pieces', [])
         library_id = data.get('library_id', 'builtin')
-        max_solutions = int(data.get('max_solutions', 1))
-        if max_solutions < 1:
+        max_solutions_raw = data.get('max_solutions', 1)
+        try:
+            max_solutions = int(max_solutions_raw)
+        except Exception:
             max_solutions = 1
         persist = bool(data.get('persist', False))
         save_name = str(data.get('save_name', '')).strip() or f"Solution {datetime.datetime.utcnow().isoformat()}"
@@ -266,7 +284,7 @@ def solve_puzzle():
 
         if not solutions:
             return jsonify({'success': False, 'message': 'No solution found for the given configuration.'})
-        if max_solutions == 1:
+        if isinstance(max_solutions, int) and max_solutions == 1:
             solutions = [solutions]
 
         serialized = []
@@ -389,6 +407,32 @@ def get_library_pieces(library_id):
                 'offsets': normalized_offsets
             }
         return jsonify(pieces_dict)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/libraries/<library_id>/canonical-pieces', methods=['GET'])
+def get_library_canonical_pieces(library_id):
+    try:
+        if library_id == 'builtin':
+            # Build canonical pieces from builtin
+            lib = {k: v for k, v in test_piece_library.items()}
+        else:
+            pieces = _list_pieces_for_library(library_id)
+            lib = {p['name']: JSONPieceAdapter(p) for p in pieces}
+
+        grouped, _ = _group_equivalent_pieces(lib)
+        # For each canonical representative, provide normalized shape and a color
+        canonical = []
+        for pid, pobj in grouped.items():
+            offsets = _normalized_orientation(pobj)
+            # choose color if available
+            color = getattr(pobj, 'color', None) or 'red'
+            canonical.append({
+                'color': color,
+                'offsets': offsets
+            })
+        return jsonify({'pieces': canonical})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

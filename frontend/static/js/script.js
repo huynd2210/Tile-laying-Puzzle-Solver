@@ -75,6 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.clearPieceGridBtn.addEventListener('click', clearPieceDesigner);
         elements.centerPieceBtn.addEventListener('click', centerPieceDesign);
         document.getElementById('load-saved-solution').addEventListener('click', loadSavedSolution);
+        document.getElementById('view-normal').addEventListener('change', handlePieceViewChange);
+        document.getElementById('view-canonical').addEventListener('change', handlePieceViewChange);
+        const findAll = document.getElementById('find-all-solutions');
+        if (findAll) {
+            findAll.addEventListener('change', () => {
+                const input = document.getElementById('num-solutions');
+                input.disabled = findAll.checked;
+            });
+        }
         listSavedSolutions();
         
         // Initialize the piece designer grid
@@ -85,6 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Generate initial board
         generateBoard();
+    }
+
+    function handlePieceViewChange() {
+        fetchLibraryPieces(state.currentLibrary);
     }
     async function listSavedSolutions() {
         try {
@@ -424,18 +437,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch pieces for a specific library
     async function fetchLibraryPieces(libraryId) {
         try {
-            const response = await fetch(`/api/libraries/${libraryId}/pieces`);
+            const canonical = document.getElementById('view-canonical').checked;
+            const endpoint = canonical ? `/api/libraries/${libraryId}/canonical-pieces` : `/api/libraries/${libraryId}/pieces`;
+            const response = await fetch(endpoint);
             if (!response.ok) {
                 throw new Error('Failed to fetch pieces');
             }
             
-            const pieces = await response.json();
-            
-            // Set all pieces as selected by default
-            state.selectedPieces = Object.keys(pieces);
-            console.log('All pieces selected by default:', state.selectedPieces);
-            
-            renderPieces(pieces, libraryId);
+            const payload = await response.json();
+            if (document.getElementById('view-canonical').checked) {
+                // Canonical payload { pieces: [{ color, offsets }] }
+                const canonicalPieces = {};
+                (payload.pieces || []).forEach((p, idx) => {
+                    canonicalPieces[`canon_${idx}`] = { id: `canon_${idx}`, color: p.color, offsets: p.offsets };
+                });
+                state.selectedPieces = Object.keys(canonicalPieces);
+                renderPieces(canonicalPieces, libraryId);
+            } else {
+                // Normal payload is a dict id -> piece
+                const pieces = payload;
+                state.selectedPieces = Object.keys(pieces);
+                renderPieces(pieces, libraryId);
+            }
         } catch (error) {
             console.error('Error fetching pieces:', error);
             showMessage('Error loading pieces: ' + error.message, true);
@@ -545,10 +568,11 @@ document.addEventListener('DOMContentLoaded', () => {
             label.className = 'piece-label';
             label.textContent = id;
             
-            // Add delete button only for editable libraries
+            // Add delete button only for editable libraries and not in canonical view
             const libMeta = state.libraries[libraryId];
             const canEdit = libMeta && libMeta.editable === true;
-            if (libraryId !== 'builtin' && canEdit) {
+            const inCanonical = document.getElementById('view-canonical') && document.getElementById('view-canonical').checked;
+            if (!inCanonical && libraryId !== 'builtin' && canEdit) {
                 const actions = document.createElement('div');
                 actions.className = 'piece-actions';
                 
@@ -876,7 +900,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 obstacles: state.obstacles,
                 pieces: state.selectedPieces,
                 library_id: state.currentLibrary,
-                max_solutions: parseInt(document.getElementById('num-solutions').value) || 1,
+                max_solutions: (function(){
+                    const all = document.getElementById('find-all-solutions').checked;
+                    if (all) return 0; // server treats <=0 as unlimited
+                    const v = parseInt(document.getElementById('num-solutions').value);
+                    return isNaN(v) ? 1 : v;
+                })(),
                 threads: (function(){
                     const v = parseInt(document.getElementById('solver-threads').value);
                     return isNaN(v) || v < 1 ? undefined : v;

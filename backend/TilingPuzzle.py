@@ -111,7 +111,15 @@ class TilingPuzzle:
         - If max_solutions > 1: returns a list of solutions, where each solution is a list of
           CandidatePlacement objects. Returns [] if none found.
         """
-        if max_solutions is None or max_solutions < 1:
+        unlimited = False
+        if max_solutions is None:
+            unlimited = True
+        else:
+            try:
+                unlimited = int(max_solutions) <= 0
+            except Exception:
+                unlimited = False
+        if not unlimited and max_solutions < 1:
             max_solutions = 1
 
         solutions = []
@@ -122,7 +130,7 @@ class TilingPuzzle:
 
         def enumerate_solutions(solver):
             nonlocal solutions
-            while len(solutions) < max_solutions and solver.solve():
+            while (unlimited or len(solutions) < max_solutions) and solver.solve():
                 model = solver.get_model()
                 selected = []
                 selected_vars = []
@@ -145,6 +153,6 @@ class TilingPuzzle:
             with Solver(**solver_kwargs) as solver:
                 enumerate_solutions(solver)
 
-        if max_solutions == 1:
+        if not unlimited and max_solutions == 1:
             return solutions[0] if solutions else None
         return solutions
