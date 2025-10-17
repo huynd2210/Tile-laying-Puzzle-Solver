@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
         board: null,
         editMode: 'obstacle',
         solution: null,
+        solutions: [],
+        currentSolutionIndex: 0,
         isSolving: false,
         designerPiece: {
             grid: [],
@@ -61,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.solveButton.addEventListener('click', solvePuzzle);
         elements.clearButton.addEventListener('click', clearBoard);
         elements.randomButton.addEventListener('click', addRandomObstacles);
+        document.getElementById('prev-solution').addEventListener('click', prevSolution);
+        document.getElementById('next-solution').addEventListener('click', nextSolution);
         elements.modeObstacle.addEventListener('change', updateEditMode);
         elements.modeView.addEventListener('change', updateEditMode);
         elements.librarySelector.addEventListener('change', handleLibraryChange);
@@ -70,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.savePieceBtn.addEventListener('click', handleSavePiece);
         elements.clearPieceGridBtn.addEventListener('click', clearPieceDesigner);
         elements.centerPieceBtn.addEventListener('click', centerPieceDesign);
+        document.getElementById('load-saved-solution').addEventListener('click', loadSavedSolution);
+        listSavedSolutions();
         
         // Initialize the piece designer grid
         initializePieceDesigner();
@@ -79,6 +85,69 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Generate initial board
         generateBoard();
+    }
+    async function listSavedSolutions() {
+        try {
+            const resp = await fetch('/api/solutions');
+            if (!resp.ok) throw new Error('Failed to list saved solutions');
+            const data = await resp.json();
+            const selector = document.getElementById('saved-solution-selector');
+            selector.innerHTML = '<option value="">-- Select saved solutions --</option>';
+            if (data.success && Array.isArray(data.solutions) && data.solutions.length > 0) {
+                data.solutions.forEach(s => {
+                    const opt = document.createElement('option');
+                    const meta = `${s.name || s.id} (${s.board.width}x${s.board.height}, ${s.num_solutions} sol)`;
+                    opt.value = s.id;
+                    opt.textContent = meta;
+                    selector.appendChild(opt);
+                });
+            } else {
+                // No saved solutions yet: keep placeholder, no error
+            }
+        } catch (e) {
+            console.warn('Saved solutions not available yet.');
+            const selector = document.getElementById('saved-solution-selector');
+            selector.innerHTML = '<option value="">-- No saved solutions --</option>';
+        }
+    }
+
+    async function loadSavedSolution() {
+        const id = document.getElementById('saved-solution-selector').value;
+        if (!id) {
+            alert('Please select a saved solutions entry first.');
+            return;
+        }
+        try {
+            const resp = await fetch(`/api/solutions/${id}`);
+            if (!resp.ok) throw new Error('Failed to load saved solutions');
+            const data = await resp.json();
+            if (!data.success) throw new Error(data.message || 'Unknown error');
+            const record = data.record;
+            // set board
+            state.width = record.board.width;
+            state.height = record.board.height;
+            elements.boardWidth.value = state.width;
+            elements.boardHeight.value = state.height;
+            state.obstacles = record.board.obstacles || [];
+            renderBoard();
+            // set library and pieces
+            state.currentLibrary = record.library_id || 'builtin';
+            if (elements.librarySelector.value !== state.currentLibrary) {
+                elements.librarySelector.value = state.currentLibrary;
+                updateLibraryActions();
+            }
+            // saved record includes full solutions payload already serialized for UI consumption
+            state.solutions = record.solutions || [];
+            state.currentSolutionIndex = 0;
+            const current = getCurrentSolution();
+            state.solution = current;
+            updateSolutionNav();
+            displaySolution(current);
+            showMessage(`Loaded saved solutions (${state.solutions.length}).`, false);
+        } catch (e) {
+            console.error('Error loading saved solutions:', e);
+            showMessage('Error loading saved solutions: ' + e.message, true);
+        }
     }
 
     // Update edit mode
@@ -154,7 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/libraries');
             if (!response.ok) {
-                throw new Error('Failed to fetch libraries');
+                console.warn('Libraries endpoint unavailable, defaulting to builtin');
+                state.libraries = { builtin: { id: 'builtin', name: 'Built-in Pieces', editable: false } };
+                updateLibrarySelector();
+                fetchLibraryPieces('builtin');
+                return;
             }
             
             state.libraries = await response.json();
@@ -163,8 +236,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch pieces for the current library
             fetchLibraryPieces(state.currentLibrary);
         } catch (error) {
-            console.error('Error fetching libraries:', error);
-            showMessage('Error loading libraries: ' + error.message, true);
+            console.warn('Error fetching libraries, defaulting to builtin');
+            state.libraries = { builtin: { id: 'builtin', name: 'Built-in Pieces', editable: false } };
+            updateLibrarySelector();
+            fetchLibraryPieces('builtin');
         }
     }
 
@@ -465,8 +540,10 @@ document.addEventListener('DOMContentLoaded', () => {
             label.className = 'piece-label';
             label.textContent = id;
             
-            // Add delete button for custom pieces
-            if (libraryId !== 'builtin') {
+            // Add delete button only for editable libraries
+            const libMeta = state.libraries[libraryId];
+            const canEdit = libMeta && libMeta.editable === true;
+            if (libraryId !== 'builtin' && canEdit) {
                 const actions = document.createElement('div');
                 actions.className = 'piece-actions';
                 
@@ -527,12 +604,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/libraries/${libraryId}/pieces/${pieceId}`, {
                 method: 'DELETE'
             });
-            
-            if (!response.ok) {
-                throw new Error('Failed to delete piece');
+            const result = await response.json().catch(() => ({ success: false }));
+            if (!response.ok || !result.success) {
+                const msg = (result && result.message) ? result.message : 'Failed to delete piece';
+                throw new Error(msg);
             }
             
-            const result = await response.json();
             if (result.success) {
                 // Remove from selected pieces if it was selected
                 const index = state.selectedPieces.indexOf(pieceId);
@@ -543,8 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Refresh pieces
                 fetchLibraryPieces(libraryId);
                 showMessage(`Piece "${pieceId}" deleted successfully`, false);
-            } else {
-                throw new Error(result.message || 'Unknown error');
             }
         } catch (error) {
             console.error('Error deleting piece:', error);
@@ -795,7 +870,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 height: state.height,
                 obstacles: state.obstacles,
                 pieces: state.selectedPieces,
-                library_id: state.currentLibrary
+                library_id: state.currentLibrary,
+                max_solutions: parseInt(document.getElementById('num-solutions').value) || 1,
+                threads: (function(){
+                    const v = parseInt(document.getElementById('solver-threads').value);
+                    return isNaN(v) || v < 1 ? undefined : v;
+                })(),
+                persist: document.getElementById('persist-solutions').checked,
+                save_name: document.getElementById('save-name').value || ''
             };
             
             // Send solve request to the server
@@ -814,9 +896,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             
             if (result.success) {
-                state.solution = result.solution;
-                displaySolution(result.solution);
-                showMessage('Solution found!', false);
+                // result.solutions is an array of solution arrays
+                state.solutions = Array.isArray(result.solutions) ? result.solutions : (result.solution ? [result.solution] : []);
+                state.currentSolutionIndex = 0;
+                updateSolutionNav();
+                const current = getCurrentSolution();
+                state.solution = current; // keep backwards compatibility in renderer
+                displaySolution(current);
+                let msg = `${state.solutions.length} solution(s) found.`;
+                if (result.saved) {
+                    msg += ` Saved (id: ${result.saved_id}).`;
+                } else if (result.saved === false && result.save_error) {
+                    msg += ` Save failed: ${result.save_error}`;
+                }
+                showMessage(msg, false);
             } else {
                 showMessage(result.message || 'No solution found.', true);
             }
@@ -832,8 +925,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Display the solution on the board
     function displaySolution(solution) {
-        // Show solution statistics
+        // Show solution statistics and solution nav if multiple
         elements.solutionStats.classList.remove('d-none');
+        updateSolutionNav();
         elements.solutionDetails.innerHTML = '';
         
         // Create list items for solution details
@@ -866,6 +960,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.className = `cell color-${coveringPiece.color}`;
             }
         });
+    }
+
+    function updateSolutionNav() {
+        const nav = document.getElementById('solution-nav');
+        const idx = document.getElementById('solution-index');
+        if (state.solutions && state.solutions.length > 1) {
+            nav.classList.remove('d-none');
+            idx.textContent = `${state.currentSolutionIndex + 1} / ${state.solutions.length}`;
+        } else {
+            nav.classList.add('d-none');
+            idx.textContent = '';
+        }
+    }
+
+    function getCurrentSolution() {
+        if (!state.solutions || state.solutions.length === 0) return null;
+        return state.solutions[state.currentSolutionIndex];
+    }
+
+    function prevSolution() {
+        if (!state.solutions || state.solutions.length <= 1) return;
+        state.currentSolutionIndex = (state.currentSolutionIndex - 1 + state.solutions.length) % state.solutions.length;
+        const current = getCurrentSolution();
+        state.solution = current;
+        displaySolution(current);
+    }
+
+    function nextSolution() {
+        if (!state.solutions || state.solutions.length <= 1) return;
+        state.currentSolutionIndex = (state.currentSolutionIndex + 1) % state.solutions.length;
+        const current = getCurrentSolution();
+        state.solution = current;
+        displaySolution(current);
     }
 
     // Clear the current solution display

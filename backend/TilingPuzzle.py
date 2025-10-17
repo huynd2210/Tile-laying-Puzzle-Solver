@@ -102,20 +102,49 @@ class TilingPuzzle:
             else:
                 print(f"Warning: No candidate placement for piece {piece_id}")
 
-    def solve(self, solver_name='glucose3'):
+    def solve(self, solver_name='glucose4', max_solutions=1, threads=None):
         """
         Solve the SAT instance.
 
-        Returns a list of CandidatePlacement objects corresponding to the selected candidate
-        for each piece if a solution exists, or None otherwise.
+        - If max_solutions == 1 (default): returns a single solution as a list of CandidatePlacement
+          objects, or None if unsatisfiable.
+        - If max_solutions > 1: returns a list of solutions, where each solution is a list of
+          CandidatePlacement objects. Returns [] if none found.
         """
-        with Solver(name=solver_name, bootstrap_with=self.cnf.clauses) as solver:
-            if solver.solve():
+        if max_solutions is None or max_solutions < 1:
+            max_solutions = 1
+
+        solutions = []
+
+        solver_kwargs = {'name': solver_name, 'bootstrap_with': self.cnf.clauses}
+        if isinstance(threads, int) and threads > 1:
+            solver_kwargs['threads'] = threads
+
+        def enumerate_solutions(solver):
+            nonlocal solutions
+            while len(solutions) < max_solutions and solver.solve():
                 model = solver.get_model()
-                solution = []
+                selected = []
+                selected_vars = []
                 for cand in self.candidates:
                     if cand.var_id in model:
-                        solution.append(cand)
-                return solution
-            else:
-                return None
+                        selected.append(cand)
+                        selected_vars.append(cand.var_id)
+                solutions.append(selected)
+                if selected_vars:
+                    solver.add_clause([-v for v in selected_vars])
+                else:
+                    break
+
+        try:
+            with Solver(**solver_kwargs) as solver:
+                enumerate_solutions(solver)
+        except TypeError:
+            # Fallback if the underlying solver doesn't support 'threads'
+            solver_kwargs.pop('threads', None)
+            with Solver(**solver_kwargs) as solver:
+                enumerate_solutions(solver)
+
+        if max_solutions == 1:
+            return solutions[0] if solutions else None
+        return solutions

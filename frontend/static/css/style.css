@@ -198,6 +198,37 @@
 .color-lightcyan { background-color: #a5f3fc !important; border: 1px solid #000 !important; }
 .color-gray { background-color: #6c757d !important; border: 1px solid #000 !important; }
 
+/* Additional colors used by libraries */
+.color-purple { background-color: #6f42c1 !important; border: 1px solid #000 !important; }
+.color-orange { background-color: #fd7e14 !important; border: 1px solid #000 !important; }
+.color-pink { background-color: #e83e8c !important; border: 1px solid #000 !important; }
+.color-salmon { background-color: #fa8072 !important; border: 1px solid #000 !important; }
+.color-brown { background-color: #8b4513 !important; border: 1px solid #000 !important; }
+.color-white { background-color: #ffffff !important; border: 1px solid #000 !important; }
+.color-black { background-color: #000000 !important; border: 1px solid #000 !important; }
+.color-lightcoral { background-color: #f08080 !important; border: 1px solid #000 !important; }
+.color-lightgoldenrod { background-color: #fafad2 !important; border: 1px solid #000 !important; }
+.color-violet { background-color: #8a2be2 !important; border: 1px solid #000 !important; }
+.color-indigo { background-color: #6610f2 !important; border: 1px solid #000 !important; }
+.color-turquoise { background-color: #40e0d0 !important; border: 1px solid #000 !important; }
+
+/* Bright variants */
+.color-brightred { background-color: #ff0000 !important; border: 1px solid #000 !important; }
+.color-brightgreen { background-color: #00c853 !important; border: 1px solid #000 !important; }
+.color-brightblue { background-color: #1e90ff !important; border: 1px solid #000 !important; }
+.color-brightyellow { background-color: #ffff00 !important; border: 1px solid #000 !important; }
+.color-brightpurple { background-color: #bf00ff !important; border: 1px solid #000 !important; }
+.color-brightorange { background-color: #ff8c00 !important; border: 1px solid #000 !important; }
+.color-brightmagenta { background-color: #ff00ff !important; border: 1px solid #000 !important; }
+.color-brightcyan { background-color: #00ffff !important; border: 1px solid #000 !important; }
+.color-brightbrown { background-color: #a0522d !important; border: 1px solid #000 !important; }
+.color-brightpink { background-color: #ff69b4 !important; border: 1px solid #000 !important; }
+
+/* Additional light variants */
+.color-lightorange { background-color: #ffd8a8 !important; border: 1px solid #000 !important; }
+.color-lightpurple { background-color: #d0b3ff !important; border: 1px solid #000 !important; }
+.color-lightpink { background-color: #ffc0cb !important; border: 1px solid #000 !important; }
+
 /* UI enhancements */
 .loading {
     position: relative;
