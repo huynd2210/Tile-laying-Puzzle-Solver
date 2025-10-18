@@ -2,6 +2,9 @@ A tilling puzzle (Polyominoes) solver. As far as I know, there currently isn't a
 
 It contains a Flask-web UI, easy to use and intuitive. It converts the tilling problem into a SAT problem and uses a SAT solver to solve it. 
 
+###Interactive Version:
+https://tile-laying-puzzle-solver.onrender.com
+
 ### To install:
 
 ```
