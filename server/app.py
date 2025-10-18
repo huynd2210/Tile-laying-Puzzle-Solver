@@ -93,7 +93,9 @@ def _delete_library(library_id):
     save_libraries_index(libraries)
     # Remove per-library file
     try:
-        os.remove(os.path.join(os.path.join(ROOT_DIR, 'instance', 'libraries'), f'{library_id}.json'))
+        # remove per-library file through storage helper (respects INSTANCE_DIR)
+        from server.json_storage import remove_library_file
+        remove_library_file(library_id)
     except Exception:
         pass
 
@@ -579,6 +581,11 @@ def delete_piece(library_id, piece_id):
         })
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+def create_app():
+    initialize_storage()
+    return app
+
 
 if __name__ == '__main__':
     initialize_storage()

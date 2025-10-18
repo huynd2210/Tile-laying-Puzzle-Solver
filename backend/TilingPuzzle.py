@@ -27,6 +27,8 @@ class TilingPuzzle:
         self.candidates = []  # List of CandidatePlacement objects.
         self.cnf = CNF()  # SAT formula.
         self.var_counter = 1  # Unique variable ids.
+        # If any board cell cannot be covered by any candidate, the instance is unsatisfiable.
+        self.unsat_due_to_coverage = False
 
         # Maps for constraints:
         self.cell_to_vars = {}  # board cell -> list of candidate var_ids.
@@ -91,6 +93,8 @@ class TilingPuzzle:
                 self.cnf.extend(enc.clauses)
                 self.var_counter = enc.nv + 1
             else:
+                # No candidate covers this cell → unsatisfiable instance.
+                self.unsat_due_to_coverage = True
                 print(f"Warning: No candidate covers cell {cell}")
         # (2) Each piece used exactly once.
         for piece_id, var_list in self.piece_to_vars.items():
@@ -121,6 +125,12 @@ class TilingPuzzle:
                 unlimited = False
         if not unlimited and max_solutions < 1:
             max_solutions = 1
+
+        # If coverage constraints already imply UNSAT, short-circuit.
+        if self.unsat_due_to_coverage:
+            if max_solutions is None or (isinstance(max_solutions, int) and max_solutions != 1) or (not isinstance(max_solutions, int)):
+                return []
+            return None
 
         solutions = []
 

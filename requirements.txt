@@ -3,6 +3,7 @@ python-sat>=0.1.7.dev12
 colorama>=0.4.4
 Flask>=2.0.0
 Flask-CORS>=3.0.10
+gunicorn>=21.2.0
 
 # Development dependencies
 pytest>=7.0.0 

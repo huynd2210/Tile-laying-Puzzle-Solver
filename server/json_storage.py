@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 
 def _paths() -> Dict[str, str]:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    instance_dir = os.path.join(base_dir, 'instance')
+    instance_dir = os.environ.get('INSTANCE_DIR') or os.path.join(base_dir, 'instance')
     libraries_index = os.path.join(instance_dir, 'libraries.json')
     libraries_dir = os.path.join(instance_dir, 'libraries')
     solutions_path = os.path.join(instance_dir, 'solutions.json')  # legacy monolith
@@ -58,6 +58,15 @@ def save_libraries_index(libraries: List[Dict[str, Any]]) -> None:
 # Per-library pieces
 def _library_file(library_id: str) -> str:
     return os.path.join(_paths()['libraries_dir'], f'{library_id}.json')
+
+
+def remove_library_file(library_id: str) -> None:
+    try:
+        fp = _library_file(library_id)
+        if os.path.exists(fp):
+            os.remove(fp)
+    except Exception:
+        pass
 
 
 def read_library_pieces(library_id: str) -> List[Dict[str, Any]]:

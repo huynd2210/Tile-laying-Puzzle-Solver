@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: tile-puzzle-solver
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn "server.app:create_app()" --bind 0.0.0.0:$PORT --workers 2
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: INSTANCE_DIR
+        value: /var/data/instance
+    disks:
+      - name: data
+        mountPath: /var/data
+        sizeGB: 1
+
