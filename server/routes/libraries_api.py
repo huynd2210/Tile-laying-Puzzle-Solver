@@ -1,6 +1,10 @@
+import logging
+import uuid
+
 from flask import Blueprint, request, jsonify
 
 from backend.pieceLibrary import test_piece_library
+from backend.utils import VALID_COLORS
 from server.services.solver_service import JSONPieceAdapter, group_equivalent_pieces, normalized_orientation
 from server.json_storage import (
     current_iso_time,
@@ -8,26 +12,25 @@ from server.json_storage import (
     save_libraries_index,
     read_library_pieces,
     write_library_pieces,
-    remove_library_file
+    remove_library_file,
 )
+
+logger = logging.getLogger(__name__)
 
 libraries_api = Blueprint('libraries_api', __name__)
 
-def _list_libraries_index():
-    return load_libraries_index()
+
+# ── Internal helpers ────────────────────────────────────────────────────────
 
 def _find_library(library_id):
-    for lib in _list_libraries_index():
+    for lib in load_libraries_index():
         if lib.get('id') == library_id:
             return lib
     return None
 
-def _list_pieces_for_library(library_id):
-    return read_library_pieces(library_id)
 
 def _add_library(name):
-    libraries = _list_libraries_index()
-    import uuid
+    libraries = load_libraries_index()
     library_id = str(uuid.uuid4())
     now = current_iso_time()
     libraries.append({
@@ -35,13 +38,14 @@ def _add_library(name):
         'name': name,
         'editable': True,
         'created_at': now,
-        'updated_at': now
+        'updated_at': now,
     })
     save_libraries_index(libraries)
     return _find_library(library_id)
 
+
 def _update_library(library_id, name):
-    libraries = _list_libraries_index()
+    libraries = load_libraries_index()
     for lib in libraries:
         if lib.get('id') == library_id:
             lib['name'] = name
@@ -50,39 +54,57 @@ def _update_library(library_id, name):
     save_libraries_index(libraries)
     return _find_library(library_id)
 
+
 def _delete_library(library_id):
-    libraries = [lib for lib in _list_libraries_index() if lib.get('id') != library_id]
+    libraries = [lib for lib in load_libraries_index() if lib.get('id') != library_id]
     save_libraries_index(libraries)
-    try:
-        remove_library_file(library_id)
-    except Exception:
-        pass
+    remove_library_file(library_id)
+
 
 def _add_piece(library_id, name, color, cells):
     pieces = read_library_pieces(library_id)
     if any(p.get('library_id') == library_id and p.get('name') == name for p in pieces):
         return None
+    # Canonicalize cells at write-time: always store as list of [i, j] lists
+    canonical_cells = [[c[0], c[1]] for c in cells]
     pieces.append({
         'library_id': library_id,
         'name': name,
         'color': color,
-        'cells': cells
+        'cells': canonical_cells,
     })
     write_library_pieces(library_id, pieces)
-    return {'id': name, 'color': color, 'offsets': cells}
+    return {'id': name, 'color': color, 'offsets': canonical_cells}
+
 
 def _delete_piece(library_id, name):
     pieces = [p for p in read_library_pieces(library_id) if not (p.get('library_id') == library_id and p.get('name') == name)]
     write_library_pieces(library_id, pieces)
 
 
+def _normalize_offsets(raw_offsets):
+    """Normalize cell offsets to a consistent [[i, j], ...] format."""
+    if not raw_offsets:
+        return []
+    # Already in the canonical format
+    if isinstance(raw_offsets, list) and all(isinstance(pos, list) and len(pos) == 2 for pos in raw_offsets):
+        return raw_offsets
+    # Tuple-based format from Piece objects
+    if isinstance(raw_offsets, (list, tuple)) and all(isinstance(pos, (list, tuple)) and len(pos) == 2 for pos in raw_offsets):
+        return [[pos[0], pos[1]] for pos in raw_offsets]
+    return []
+
+
+# ── Routes ──────────────────────────────────────────────────────────────────
+
 @libraries_api.route('/api/libraries', methods=['GET'])
 def get_libraries():
     try:
-        libraries = _list_libraries_index()
+        libraries = load_libraries_index()
         libraries_dict = {lib.get('id'): lib for lib in libraries}
         return jsonify(libraries_dict)
     except Exception as e:
+        logger.exception("Failed to get libraries")
         return jsonify({"error": str(e)}), 500
 
 
@@ -95,7 +117,7 @@ def get_library_pieces(library_id):
                 pieces_dict[key] = {
                     'id': key,
                     'color': piece.color,
-                    'offsets': piece.get_offsets()
+                    'offsets': piece.get_offsets(),
                 }
             return jsonify(pieces_dict)
 
@@ -103,38 +125,21 @@ def get_library_pieces(library_id):
         if not lib:
             return jsonify({"error": f"Library with id {library_id} not found"}), 404
 
-        pieces = _list_pieces_for_library(library_id)
+        pieces = read_library_pieces(library_id)
         pieces_dict = {}
         for piece in pieces:
-            offsets = piece.get('cells') or []
-            if isinstance(offsets, tuple) or (isinstance(offsets, list) and any(isinstance(pos, tuple) for pos in offsets)):
-                offsets = [[pos[0], pos[1]] for pos in offsets]
-            if not all(isinstance(pos, list) for pos in offsets):
-                normalized_offsets = []
-                try:
-                    if isinstance(offsets, list) and len(offsets) % 2 == 0:
-                        for i in range(0, len(offsets), 2):
-                            normalized_offsets.append([offsets[i], offsets[i+1]])
-                except Exception:
-                    normalized_offsets = []
-            else:
-                normalized_offsets = offsets
-            allowed = {
-                'red','blue','green','yellow','magenta','cyan','lightred','lightblue','lightgreen','lightyellow','lightmagenta','lightcyan','gray',
-                'purple','orange','pink','salmon','brown','white','black','lightcoral','lightgoldenrod','violet','indigo','turquoise',
-                'brightred','brightgreen','brightblue','brightyellow','brightpurple','brightorange','brightmagenta','brightcyan','brightbrown','brightpink',
-                'lightorange','lightpurple','lightpink'
-            }
+            offsets = _normalize_offsets(piece.get('cells') or [])
             color = piece.get('color')
-            color = color if color in allowed else 'red'
+            color = color if color in VALID_COLORS else 'red'
             name = piece.get('name')
             pieces_dict[name] = {
                 'id': name,
                 'color': color,
-                'offsets': normalized_offsets
+                'offsets': offsets,
             }
         return jsonify(pieces_dict)
     except Exception as e:
+        logger.exception("Failed to get pieces for library %s", library_id)
         return jsonify({"error": str(e)}), 500
 
 
@@ -144,7 +149,7 @@ def get_library_canonical_pieces(library_id):
         if library_id == 'builtin':
             lib = {k: v for k, v in test_piece_library.items()}
         else:
-            pieces = _list_pieces_for_library(library_id)
+            pieces = read_library_pieces(library_id)
             lib = {p['name']: JSONPieceAdapter(p) for p in pieces}
 
         grouped, _ = group_equivalent_pieces(lib)
@@ -154,10 +159,11 @@ def get_library_canonical_pieces(library_id):
             color = getattr(pobj, 'color', None) or 'red'
             canonical.append({
                 'color': color,
-                'offsets': offsets
+                'offsets': offsets,
             })
         return jsonify({'pieces': canonical})
     except Exception as e:
+        logger.exception("Failed to get canonical pieces for library %s", library_id)
         return jsonify({"error": str(e)}), 500
 
 
@@ -172,9 +178,10 @@ def create_library():
         return jsonify({
             "success": True,
             "message": "Library created successfully",
-            "library": library
+            "library": library,
         })
     except Exception as e:
+        logger.exception("Failed to create library")
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -194,9 +201,10 @@ def update_library(library_id):
         return jsonify({
             "success": True,
             "message": "Library updated successfully",
-            "library": library
+            "library": library,
         })
     except Exception as e:
+        logger.exception("Failed to update library %s", library_id)
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -211,9 +219,10 @@ def delete_library(library_id):
         _delete_library(library_id)
         return jsonify({
             "success": True,
-            "message": "Library deleted successfully"
+            "message": "Library deleted successfully",
         })
     except Exception as e:
+        logger.exception("Failed to delete library %s", library_id)
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -243,9 +252,10 @@ def create_piece(library_id):
         return jsonify({
             "success": True,
             "message": "Piece created successfully",
-            "piece": created
+            "piece": created,
         })
     except Exception as e:
+        logger.exception("Failed to create piece in library %s", library_id)
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -257,13 +267,14 @@ def delete_piece(library_id, piece_id):
             return jsonify({"success": False, "message": f"Library with id {library_id} not found"}), 404
         if not lib.get('editable', True):
             return jsonify({"success": False, "message": "Cannot delete pieces from built-in library"}), 403
-        pieces = _list_pieces_for_library(library_id)
+        pieces = read_library_pieces(library_id)
         if not any(p.get('name') == piece_id for p in pieces):
             return jsonify({"success": False, "message": f"Piece '{piece_id}' not found in library '{library_id}'"}), 404
         _delete_piece(library_id, piece_id)
         return jsonify({
             "success": True,
-            "message": f"Piece '{piece_id}' deleted successfully"
+            "message": f"Piece '{piece_id}' deleted successfully",
         })
     except Exception as e:
+        logger.exception("Failed to delete piece %s from library %s", piece_id, library_id)
         return jsonify({"success": False, "message": str(e)}), 500

@@ -16,7 +16,7 @@ from server.json_storage import (
 )
 
 app = Flask(__name__, static_folder=os.path.join(ROOT_DIR, 'frontend', 'static'), template_folder=os.path.join(ROOT_DIR, 'frontend', 'templates'))
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 CORS(app)
 
 # Import and register blueprints
