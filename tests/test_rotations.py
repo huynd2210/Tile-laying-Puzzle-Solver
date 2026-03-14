@@ -35,7 +35,7 @@ class TestPieceRotations(unittest.TestCase):
     def test_basic_rotations(self):
         """Test basic rotations of simple pieces."""
         # Create an L-shaped piece
-        l_piece = Piece(0, 0, 0, 1, 1, 0, color="red")
+        l_piece = Piece([(0, 0), (0, 1), (1, 0)], color="red")
         
         # Get all orientations
         orientations = l_piece.get_orientations()
@@ -67,7 +67,7 @@ class TestPieceRotations(unittest.TestCase):
     def test_symmetric_piece_rotations(self):
         """Test rotations of pieces with symmetry."""
         # Create a domino piece (2x1)
-        domino = Piece(0, 0, 0, 1, color="blue")
+        domino = Piece([(0, 0), (0, 1)], color="blue")
         domino_orientations = domino.get_orientations()
         
         # Domino should have only 2 distinct orientations (horizontal and vertical)
@@ -76,7 +76,7 @@ class TestPieceRotations(unittest.TestCase):
         self.assertIn(((0, 0), (1, 0)), domino_orientations)  # Vertical
         
         # Create a square piece (2x2)
-        square = Piece(0, 0, 0, 1, 1, 0, 1, 1, color="green")
+        square = Piece([(0, 0), (0, 1), (1, 0), (1, 1)], color="green")
         square_orientations = square.get_orientations()
         
         # Square should have only 1 distinct orientation (due to four-fold symmetry)
@@ -86,7 +86,7 @@ class TestPieceRotations(unittest.TestCase):
     def test_asymmetric_piece_rotations(self):
         """Test rotations of asymmetric pieces."""
         # Create an asymmetric Z-tetromino
-        z_piece = Piece(0, 0, 0, 1, 1, 1, 1, 2, color="red")
+        z_piece = Piece([(0, 0), (0, 1), (1, 1), (1, 2)], color="red")
         z_orientations = z_piece.get_orientations()
         
         # Z-tetromino should have 4 distinct orientations (2 rotations x 2 reflections)
@@ -95,7 +95,7 @@ class TestPieceRotations(unittest.TestCase):
         self.assertGreaterEqual(num_orientations, 2, "Should have at least 2 orientations")
         
         # Create a skew tetromino
-        skew = Piece(0, 0, 1, 0, 1, 1, 2, 1, color="purple")
+        skew = Piece([(0, 0), (1, 0), (1, 1), (2, 1)], color="purple")
         skew_orientations = skew.get_orientations()
         
         # Skew tetromino should have several distinct orientations
@@ -104,7 +104,7 @@ class TestPieceRotations(unittest.TestCase):
     def test_reflections(self):
         """Test reflection transformations specifically."""
         # Create a piece that clearly shows reflections (P-shaped)
-        p_piece = Piece(0, 0, 0, 1, 1, 0, 1, 1, 2, 0, color="cyan")
+        p_piece = Piece([(0, 0), (0, 1), (1, 0), (1, 1), (2, 0)], color="cyan")
         p_orientations = p_piece.get_orientations()
         
         # P-shape should have several distinct orientations
@@ -130,8 +130,8 @@ class TestTilingWithRotations(unittest.TestCase):
         
         # Create pieces that can solve the puzzle with rotations
         pieces = {
-            'I': Piece(0, 0, 0, 1, color="blue"),        # Domino (will need to be rotated)
-            'D': Piece(0, 0, 1, 0, color="red"),         # Another domino (will need to be rotated)
+            'I': Piece([(0, 0), (0, 1)], color="blue"),        # Domino (will need to be rotated)
+            'D': Piece([(0, 0), (1, 0)], color="red"),         # Another domino (will need to be rotated)
         }
         
         # Create puzzle
@@ -158,8 +158,8 @@ class TestTilingWithRotations(unittest.TestCase):
         
         # Create pieces that might use reflection to solve
         pieces = {
-            'Z': Piece(0, 0, 0, 1, 1, 1, 1, 2, color="red"),  # Z tetromino
-            'I': Piece(0, 0, 0, 1, color="blue"),        # Domino
+            'Z': Piece([(0, 0), (0, 1), (1, 1), (1, 2)], color="red"),  # Z tetromino
+            'I': Piece([(0, 0), (0, 1)], color="blue"),        # Domino
         }
         
         # Create puzzle

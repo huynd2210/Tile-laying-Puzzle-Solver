@@ -54,22 +54,17 @@ class TilingPuzzle:
                 # For each anchor position where the piece fits on the board...
                 for base_i in range(self.board.height - max_i):
                     for base_j in range(self.board.width - max_j):
-                        # First check if the base position is valid
-                        if (base_i, base_j) in self.board.obstacles:
-                            continue
-                            
-                        # Create the candidate placement
-                        candidate = CandidatePlacement(piece_id, orient, (base_i, base_j), self.var_counter)
-                        
-                        # Check if all cells of the candidate are valid (not obstacles)
                         valid_placement = True
-                        for cell in candidate.cells:
-                            if cell in self.board.obstacles or not (0 <= cell[0] < self.board.height and 0 <= cell[1] < self.board.width):
+                        for di, dj in orient:
+                            ci, cj = base_i + di, base_j + dj
+                            if (ci, cj) in self.board.obstacles or not (0 <= ci < self.board.height and 0 <= cj < self.board.width):
                                 valid_placement = False
                                 break
                         
                         # Only add the candidate if it's a valid placement
                         if valid_placement:
+                            # Create the candidate placement
+                            candidate = CandidatePlacement(piece_id, orient, (base_i, base_j), self.var_counter)
                             self.candidates.append(candidate)
                             # Update board cell mapping.
                             for cell in candidate.cells:
@@ -154,14 +149,25 @@ class TilingPuzzle:
                 else:
                     break
 
+        def run_solver(kwargs):
+            try:
+                with Solver(**kwargs) as solver:
+                    enumerate_solutions(solver)
+            except TypeError:
+                # Fallback if the underlying solver doesn't support 'threads'
+                kwargs.pop('threads', None)
+                with Solver(**kwargs) as solver:
+                    enumerate_solutions(solver)
+
         try:
-            with Solver(**solver_kwargs) as solver:
-                enumerate_solutions(solver)
-        except TypeError:
-            # Fallback if the underlying solver doesn't support 'threads'
-            solver_kwargs.pop('threads', None)
-            with Solver(**solver_kwargs) as solver:
-                enumerate_solutions(solver)
+            run_solver(solver_kwargs)
+        except Exception as e:
+            try:
+                solver_kwargs['name'] = 'cadical'
+                run_solver(solver_kwargs)
+            except Exception:
+                solver_kwargs['name'] = 'minisat22'
+                run_solver(solver_kwargs)
 
         if not unlimited and max_solutions == 1:
             return solutions[0] if solutions else None

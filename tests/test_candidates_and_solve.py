@@ -25,7 +25,7 @@ class TestSolveBasics(unittest.TestCase):
         # 1x2 board with a single triomino cannot be solved
         board = Board(2, 1)
         pieces = {
-            'T': Piece(0, 0, 0, 1, 0, 2),  # length-3 line
+            'T': Piece([(0, 0), (0, 1), (0, 2)]),  # length-3 line
         }
         puzzle = TilingPuzzle(board, pieces)
         solution = puzzle.solve()
@@ -36,8 +36,8 @@ class TestSolveBasics(unittest.TestCase):
         # Note: Board(height=1,width=2) → cells: (0,0),(0,1)
         board = Board(2, 1)
         pieces = {
-            'A': Piece(0, 0),  # single cell
-            'B': Piece(0, 0),  # another single cell (identical shape but distinct id)
+            'A': Piece([(0, 0)]),  # single cell
+            'B': Piece([(0, 0)]),  # another single cell (identical shape but distinct id)
         }
         puzzle = TilingPuzzle(board, pieces)
         solutions = puzzle.solve(max_solutions=2)
@@ -50,8 +50,8 @@ class TestSolveBasics(unittest.TestCase):
         # Same setup as above but request unlimited and ensure we get at least 2
         board = Board(2, 1)
         pieces = {
-            'A': Piece(0, 0),
-            'B': Piece(0, 0),
+            'A': Piece([(0, 0)]),
+            'B': Piece([(0, 0)]),
         }
         puzzle = TilingPuzzle(board, pieces)
         solutions = puzzle.solve(max_solutions=0)
@@ -64,8 +64,8 @@ class TestSolveBasics(unittest.TestCase):
         # not using the other piece
         board = Board(1, 1)
         pieces = {
-            'A': Piece(0, 0),
-            'B': Piece(0, 0),
+            'A': Piece([(0, 0)]),
+            'B': Piece([(0, 0)]),
         }
         puzzle = TilingPuzzle(board, pieces)
         solution = puzzle.solve()
@@ -82,8 +82,8 @@ class TestSolveBasics(unittest.TestCase):
         # Ensure code path with threads kwarg doesn't crash
         board = Board(1, 2)
         pieces = {
-            'A': Piece(0, 0),
-            'B': Piece(0, 0),
+            'A': Piece([(0, 0)]),
+            'B': Piece([(0, 0)]),
         }
         puzzle = TilingPuzzle(board, pieces)
         # Try with threads=2 (may fall back if solver doesn't support threads)

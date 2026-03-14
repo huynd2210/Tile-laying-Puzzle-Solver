@@ -14,23 +14,14 @@ class Piece:
     on an empty board).
     """
 
-    def __init__(self, *args, color="white"):
+    def __init__(self, coordinates, color="white"):
         self.offsetValues = []
         self.color = color
-        if len(args) % 2 != 0:
-            raise Exception("Invalid number of arguments: coordinates must be paired")
-        self.initPiece(args)
+        self.initPiece(coordinates)
 
-    def initPiece(self, args):
-        is_i = True
-        temp_i = None
-        for element in args:
-            if is_i:
-                temp_i = element
-                is_i = False
-            else:
-                is_i = True
-                self.offsetValues.append(Coordinate(temp_i, element))
+    def initPiece(self, coordinates):
+        for i, j in coordinates:
+            self.offsetValues.append(Coordinate(i, j))
 
     def get_offsets(self):
         """

@@ -196,14 +196,14 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         
         # Create a custom piece library with simple pieces that can cover the board
         custom_lib = {
-            "A": Piece(0, 0, 0, 1, color="red"),      # Vertical domino
-            "B": Piece(0, 0, 1, 0, color="blue"),     # Horizontal domino
-            "C": Piece(0, 0, color="green"),          # Single cell
-            "D": Piece(0, 0, color="yellow"),         # Single cell
-            "E": Piece(0, 0, color="magenta"),        # Single cell
-            "F": Piece(0, 0, color="cyan"),           # Single cell
-            "G": Piece(0, 0, color="white"),          # Single cell
-            "H": Piece(0, 0, color="black"),          # Single cell
+            "A": Piece([(0, 0), (0, 1)], color="red"),      # Vertical domino
+            "B": Piece([(0, 0), (1, 0)], color="blue"),     # Horizontal domino
+            "C": Piece([(0, 0)], color="green"),          # Single cell
+            "D": Piece([(0, 0)], color="yellow"),         # Single cell
+            "E": Piece([(0, 0)], color="magenta"),        # Single cell
+            "F": Piece([(0, 0)], color="cyan"),           # Single cell
+            "G": Piece([(0, 0)], color="white"),          # Single cell
+            "H": Piece([(0, 0)], color="black"),          # Single cell
         }
         
         puzzle = TilingPuzzle(board, custom_lib)
@@ -233,6 +233,24 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
                             if (i, j) not in obstacles}
             self.assertEqual(covered_cells, expected_cells, 
                           "Solution doesn't cover all non-obstacle cells")
+
+    def test_obstacle_anchor_bug(self):
+        """Test that a piece missing the (0,0) cell can still be anchored if (0,0) is an obstacle."""
+        board = Board(2, 2)
+        # Add an obstacle at (0, 0)
+        board.addObstacles([(0, 0)])
+        
+        # Create an L-shaped piece that lacks the (0,0) anchor
+        my_piece = Piece([(0, 1), (1, 0), (1, 1)], color="blue")
+        custom_lib = {"L": my_piece}
+        
+        puzzle = TilingPuzzle(board, custom_lib)
+        
+        # Previously, this would produce 0 candidates and fail
+        self.assertEqual(len(puzzle.candidates), 1)
+        solution = puzzle.solve()
+        self.assertIsNotNone(solution, "Should find a solution around the obstacle")
+        self.assertEqual(len(solution), 1)
 
 
 if __name__ == "__main__":
