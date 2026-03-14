@@ -68,29 +68,44 @@ def _file_lock(filepath: str):
         lockfile.close()
 
 
+# ── Core Data I/O Helpers ───────────────────────────────────────────────────
+
+def _load_json(filepath: str, default: Any = None) -> Any:
+    """Safely load JSON from a file under a lock, returning default on failure."""
+    if not os.path.exists(filepath):
+        return default
+    try:
+        with _file_lock(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to load JSON from %s: %s", filepath, exc)
+        return default
+
+
+def _save_json(filepath: str, data: Any) -> bool:
+    """Safely save JSON to a file under a lock."""
+    ensure_dirs()
+    try:
+        with _file_lock(filepath):
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except OSError as exc:
+        logger.warning("Failed to save JSON to %s: %s", filepath, exc)
+        return False
+
+
 # ── Libraries index ─────────────────────────────────────────────────────────
 
 def load_libraries_index() -> List[Dict[str, Any]]:
     ensure_dirs()
-    p = _paths()['libraries_index']
-    if not os.path.exists(p):
-        return []
-    try:
-        with _file_lock(p):
-            with open(p, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to load libraries index: %s", exc)
-        return []
+    data = _load_json(_paths()['libraries_index'], default=[])
+    return data if isinstance(data, list) else []
 
 
 def save_libraries_index(libraries: List[Dict[str, Any]]) -> None:
-    ensure_dirs()
-    p = _paths()['libraries_index']
-    with _file_lock(p):
-        with open(p, 'w', encoding='utf-8') as f:
-            json.dump(libraries, f, ensure_ascii=False, indent=2)
+    _save_json(_paths()['libraries_index'], libraries)
 
 
 # ── Per-library pieces ──────────────────────────────────────────────────────
@@ -110,29 +125,14 @@ def remove_library_file(library_id: str) -> None:
 
 def read_library_pieces(library_id: str) -> List[Dict[str, Any]]:
     ensure_dirs()
-    p = _library_file(library_id)
-    if not os.path.exists(p):
-        return []
-    try:
-        with _file_lock(p):
-            with open(p, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                if isinstance(data, dict) and 'pieces' in data:
-                    return data.get('pieces') or []
-                if isinstance(data, list):
-                    return data
-                return []
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read pieces for library %s: %s", library_id, exc)
-        return []
+    data = _load_json(_library_file(library_id), default=[])
+    if isinstance(data, dict) and 'pieces' in data:
+        return data.get('pieces') or []
+    return data if isinstance(data, list) else []
 
 
 def write_library_pieces(library_id: str, pieces: List[Dict[str, Any]]) -> None:
-    ensure_dirs()
-    p = _library_file(library_id)
-    with _file_lock(p):
-        with open(p, 'w', encoding='utf-8') as f:
-            json.dump({'pieces': pieces}, f, ensure_ascii=False, indent=2)
+    _save_json(_library_file(library_id), {'pieces': pieces})
 
 
 # ── Solutions store ─────────────────────────────────────────────────────────
@@ -156,13 +156,26 @@ def _get_library_name(library_id: str) -> str:
     return library_id
 
 
+def _read_legacy_solutions() -> List[Dict[str, Any]]:
+    """Helper to read the legacy monolith solutions file if it exists."""
+    legacy = _paths()['solutions']
+    if not os.path.exists(legacy):
+        return []
+    try:
+        with open(legacy, 'r', encoding='utf-8') as f:
+            arr = json.load(f)
+        return arr if isinstance(arr, list) else []
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to read legacy solutions: %s", exc)
+        return []
+
+
 def add_solution_record(name: str, board: Dict[str, Any], library_id: str, library_name: str, selected_pieces: List[str], solutions_payload: List[List[Dict[str, Any]]]) -> Dict[str, Any]:
     rec_id = str(uuid.uuid4())
-    now = current_iso_time()
     record = {
         'id': rec_id,
         'name': name,
-        'created_at': now,
+        'created_at': current_iso_time(),
         'board': board,
         'library_id': library_id,
         'library': library_name or _get_library_name(library_id),
@@ -170,100 +183,64 @@ def add_solution_record(name: str, board: Dict[str, Any], library_id: str, libra
         'solutions': solutions_payload,
         'num_solutions': len(solutions_payload)
     }
-    ensure_dirs()
-    fp = _solution_file_path(rec_id)
-    with _file_lock(fp):
-        with open(fp, 'w', encoding='utf-8') as f:
-            json.dump(record, f, ensure_ascii=False, indent=2)
+    _save_json(_solution_file_path(rec_id), record)
     return record
 
 
 def find_solution_by_id(solution_id: str) -> Dict[str, Any]:
     # Prefer per-file store
-    try:
-        p = _solution_file_path(solution_id)
-        if os.path.exists(p):
-            with _file_lock(p):
-                with open(p, 'r', encoding='utf-8') as f:
-                    rec = json.load(f)
-                    if 'library' not in rec:
-                        rec['library'] = _get_library_name(rec.get('library_id'))
-                    return rec
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read solution %s: %s", solution_id, exc)
+    rec = _load_json(_solution_file_path(solution_id))
+    if rec:
+        if 'library' not in rec:
+            rec['library'] = _get_library_name(rec.get('library_id'))
+        return rec
+        
     # Legacy monolith fallback
-    try:
-        legacy = _paths()['solutions']
-        if os.path.exists(legacy):
-            with open(legacy, 'r', encoding='utf-8') as f:
-                arr = json.load(f)
-            for rec in (arr if isinstance(arr, list) else []):
-                if rec.get('id') == solution_id:
-                    if 'library' not in rec:
-                        rec['library'] = _get_library_name(rec.get('library_id'))
-                    return rec
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read legacy solutions: %s", exc)
+    for r in _read_legacy_solutions():
+        if r.get('id') == solution_id:
+            if 'library' not in r:
+                r['library'] = _get_library_name(r.get('library_id'))
+            return r
     return None
 
 
 def list_solution_summaries() -> List[Dict[str, Any]]:
-    summaries: List[Dict[str, Any]] = []
+    summaries = []
+    
+    def _extract_summary(rec: Dict[str, Any]) -> Dict[str, Any]:
+        board = rec.get('board') or {}
+        return {
+            'id': rec.get('id'),
+            'name': rec.get('name'),
+            'created_at': rec.get('created_at'),
+            'num_solutions': rec.get('num_solutions'),
+            'library_id': rec.get('library_id'),
+            'library': rec.get('library') or _get_library_name(rec.get('library_id')),
+            'board': {'width': board.get('width'), 'height': board.get('height')}
+        }
+
     files = _iter_solution_files()
     if files:
         for fp in files:
-            try:
-                with open(fp, 'r', encoding='utf-8') as f:
-                    rec = json.load(f)
-                board = rec.get('board') or {}
-                summaries.append({
-                    'id': rec.get('id'),
-                    'name': rec.get('name'),
-                    'created_at': rec.get('created_at'),
-                    'num_solutions': rec.get('num_solutions'),
-                    'library_id': rec.get('library_id'),
-                    'library': rec.get('library') or _get_library_name(rec.get('library_id')),
-                    'board': {
-                        'width': board.get('width'),
-                        'height': board.get('height')
-                    }
-                })
-            except (json.JSONDecodeError, OSError) as exc:
-                logger.warning("Failed to read solution file %s: %s", fp, exc)
-                continue
+            rec = _load_json(fp)
+            if rec:
+                summaries.append(_extract_summary(rec))
         return summaries
+        
     # Legacy monolith fallback
-    try:
-        legacy = _paths()['solutions']
-        if os.path.exists(legacy):
-            with open(legacy, 'r', encoding='utf-8') as f:
-                arr = json.load(f)
-            for rec in (arr if isinstance(arr, list) else []):
-                board = rec.get('board') or {}
-                summaries.append({
-                    'id': rec.get('id'),
-                    'name': rec.get('name'),
-                    'created_at': rec.get('created_at'),
-                    'num_solutions': rec.get('num_solutions'),
-                    'library_id': rec.get('library_id'),
-                    'library': rec.get('library') or _get_library_name(rec.get('library_id')),
-                    'board': {
-                        'width': board.get('width'),
-                        'height': board.get('height')
-                    }
-                })
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Failed to read legacy solutions: %s", exc)
+    for rec in _read_legacy_solutions():
+        summaries.append(_extract_summary(rec))
+    
     return summaries
 
 
 # ── Migration from monolith polyomino.json ──────────────────────────────────
 
 def migrate_from_monolith() -> bool:
-    ps = _paths()
-    monolith = ps['monolith']
+    monolith = _paths()['monolith']
     if not os.path.exists(monolith):
         return False
+        
     try:
         with open(monolith, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -275,26 +252,21 @@ def migrate_from_monolith() -> bool:
     pieces = data.get('pieces', []) if isinstance(data, dict) else []
     solutions = data.get('solutions', []) if isinstance(data, dict) else []
 
-    ensure_dirs()
     save_libraries_index(libraries)
+    
     # Group pieces by library and write files
     by_lib: Dict[str, List[Dict[str, Any]]] = {}
     for p in pieces:
-        lid = p.get('library_id')
-        by_lib.setdefault(lid, []).append(p)
+        by_lib.setdefault(p.get('library_id'), []).append(p)
     for lid, plist in by_lib.items():
         write_library_pieces(lid, plist)
+        
     # Save solutions per-file
     for rec in (solutions if isinstance(solutions, list) else []):
-        try:
-            sid = rec.get('id') or str(uuid.uuid4())
-            rec['id'] = sid
-            fp = _solution_file_path(sid)
-            with open(fp, 'w', encoding='utf-8') as f:
-                json.dump(rec, f, ensure_ascii=False, indent=2)
-        except OSError as exc:
-            logger.warning("Failed to write solution %s during migration: %s", sid, exc)
-            continue
+        sid = rec.get('id') or str(uuid.uuid4())
+        rec['id'] = sid
+        _save_json(_solution_file_path(sid), rec)
+        
     # Backup monolith
     try:
         os.replace(monolith, monolith + '.bak')
@@ -308,21 +280,18 @@ def ensure_storage_initialized() -> None:
     if os.path.exists(_paths()['libraries_index']):
         # Also migrate legacy solutions.json to per-file if present
         legacy = _paths()['solutions']
-        if os.path.exists(legacy) and (not _iter_solution_files()):
+        if os.path.exists(legacy) and not _iter_solution_files():
+            for rec in _read_legacy_solutions():
+                sid = rec.get('id') or str(uuid.uuid4())
+                rec['id'] = sid
+                _save_json(_solution_file_path(sid), rec)
             try:
-                with open(legacy, 'r', encoding='utf-8') as f:
-                    arr = json.load(f)
-                for rec in (arr if isinstance(arr, list) else []):
-                    sid = rec.get('id') or str(uuid.uuid4())
-                    rec['id'] = sid
-                    fp = _solution_file_path(sid)
-                    with open(fp, 'w', encoding='utf-8') as out:
-                        json.dump(rec, out, ensure_ascii=False, indent=2)
                 os.replace(legacy, legacy + '.bak')
-            except (json.JSONDecodeError, OSError) as exc:
-                logger.warning("Failed to migrate legacy solutions: %s", exc)
+            except OSError:
+                pass
         return
+        
     if migrate_from_monolith():
         return
+        
     save_libraries_index([])
-    ensure_dirs()
