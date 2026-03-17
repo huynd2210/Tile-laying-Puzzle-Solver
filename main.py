@@ -1,7 +1,7 @@
-from TilingPuzzle import TilingPuzzle
-from board import Board
-from pieceLibrary import test_piece_library, patchworkPieceLibrary
-from utils import print_solution_board
+from backend.TilingPuzzle import TilingPuzzle
+from backend.board import Board
+from backend.pieceLibrary import test_piece_library, patchworkPieceLibrary
+from backend.utils import print_solution_board
 
 
 def main():
@@ -37,15 +37,15 @@ def main_with_obstacles():
     # Add obstacles that form an interesting pattern
     obstacles = [(0, 0), (0, 3), (1, 3)]
     print(f"Adding obstacles at positions: {obstacles}")
-    board.addObstacles(obstacles)
+    board.add_obstacles(obstacles)
     
     print(f"Board {board} with {board.count_obstacles()} obstacles")
-    print(f"Obstacle positions from board: {board.getObstacles()}")
+    print(f"Obstacle positions from board: {board.get_obstacles()}")
 
     # Debug: Check if obstacles are correctly registered
     for i in range(board.height):
         for j in range(board.width):
-            if board.isObstacle(i, j):
+            if board.is_obstacle(i, j):
                 print(f"Position ({i}, {j}) is an obstacle")
     
     # Let's also check what cells are considered valid by the board

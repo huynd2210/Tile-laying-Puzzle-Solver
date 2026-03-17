@@ -1,9 +1,4 @@
 import unittest
-import sys
-import os
-
-# Add parent directory to system path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.board import Board
 from backend.piece import Piece
@@ -22,50 +17,50 @@ class TestBoardObstacles(unittest.TestCase):
 
     def test_add_obstacles(self):
         """Test adding obstacles to the board."""
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         self.assertEqual(len(self.board.obstacles), 3)
         for obs in self.obstacles:
             self.assertIn(obs, self.board.obstacles)
 
     def test_get_obstacles(self):
         """Test getting the list of obstacles."""
-        self.board.addObstacles(self.obstacles)
-        stored_obstacles = self.board.getObstacles()
+        self.board.add_obstacles(self.obstacles)
+        stored_obstacles = self.board.get_obstacles()
         self.assertEqual(len(stored_obstacles), 3)
         for obs in self.obstacles:
             self.assertIn(obs, stored_obstacles)
 
     def test_is_obstacle(self):
         """Test checking if a position is an obstacle."""
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         for i in range(self.board.height):
             for j in range(self.board.width):
                 if (i, j) in self.obstacles:
-                    self.assertTrue(self.board.isObstacle(i, j))
+                    self.assertTrue(self.board.is_obstacle(i, j))
                 else:
-                    self.assertFalse(self.board.isObstacle(i, j))
+                    self.assertFalse(self.board.is_obstacle(i, j))
 
     def test_remove_obstacle(self):
         """Test removing a specific obstacle."""
-        self.board.addObstacles(self.obstacles)
-        self.board.removeObstacle((0, 0))
+        self.board.add_obstacles(self.obstacles)
+        self.board.remove_obstacle((0, 0))
         self.assertNotIn((0, 0), self.board.obstacles)
         self.assertEqual(len(self.board.obstacles), 2)
 
     def test_clear_obstacles(self):
         """Test clearing all obstacles."""
-        self.board.addObstacles(self.obstacles)
-        self.board.clearObstacles()
+        self.board.add_obstacles(self.obstacles)
+        self.board.clear_obstacles()
         self.assertEqual(len(self.board.obstacles), 0)
 
     def test_count_obstacles(self):
         """Test counting obstacles."""
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         self.assertEqual(self.board.count_obstacles(), 3)
 
     def test_cells_method_with_obstacles(self):
         """Test that cells() method correctly excludes obstacles."""
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         cells = self.board.cells()
         expected_cells = [(i, j) for i in range(self.board.height) 
                           for j in range(self.board.width) 
@@ -84,7 +79,7 @@ class TestBoardObstacles(unittest.TestCase):
 
     def test_in_bounds_with_obstacles(self):
         """Test that in_bounds() method correctly considers obstacles as out of bounds."""
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         
         # Test regular bounds
         self.assertFalse(self.board.in_bounds(-1, 0))
@@ -105,11 +100,11 @@ class TestBoardObstacles(unittest.TestCase):
     def test_invalid_obstacle(self):
         """Test adding an invalid obstacle (out of bounds)."""
         with self.assertRaises(ValueError):
-            self.board.addObstacles([(self.board.height, 0)])
+            self.board.add_obstacles([(self.board.height, 0)])
         with self.assertRaises(ValueError):
-            self.board.addObstacles([(0, self.board.width)])
+            self.board.add_obstacles([(0, self.board.width)])
         with self.assertRaises(ValueError):
-            self.board.addObstacles([(-1, 0)])
+            self.board.add_obstacles([(-1, 0)])
 
 
 class TestTilingPuzzleWithObstacles(unittest.TestCase):
@@ -119,7 +114,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         """Set up a board with obstacles for each test."""
         self.board = Board(4, 3)
         self.obstacles = [(0, 0)]  # Simple obstacle at top-left
-        self.board.addObstacles(self.obstacles)
+        self.board.add_obstacles(self.obstacles)
         self.piece_lib = test_piece_library
 
     def test_candidate_generation_with_obstacles(self):
@@ -163,7 +158,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         # Test with obstacles in a row
         board = Board(4, 3)
         row_obstacles = [(0, j) for j in range(4)]  # Entire top row
-        board.addObstacles(row_obstacles)
+        board.add_obstacles(row_obstacles)
         
         puzzle = TilingPuzzle(board, self.piece_lib)
         solution = puzzle.solve()
@@ -177,7 +172,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         # Test with obstacles in a column
         board = Board(4, 3)
         col_obstacles = [(i, 0) for i in range(3)]  # Entire left column
-        board.addObstacles(col_obstacles)
+        board.add_obstacles(col_obstacles)
         
         puzzle = TilingPuzzle(board, self.piece_lib)
         solution = puzzle.solve()
@@ -192,7 +187,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         """Test solving with a custom set of pieces and obstacles."""
         board = Board(3, 3)
         obstacles = [(1, 1)]  # Center cell is obstacle
-        board.addObstacles(obstacles)
+        board.add_obstacles(obstacles)
         
         # Create a custom piece library with simple pieces that can cover the board
         custom_lib = {
@@ -238,7 +233,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         """Test that a piece missing the (0,0) cell can still be anchored if (0,0) is an obstacle."""
         board = Board(2, 2)
         # Add an obstacle at (0, 0)
-        board.addObstacles([(0, 0)])
+        board.add_obstacles([(0, 0)])
         
         # Create an L-shaped piece that lacks the (0,0) anchor
         my_piece = Piece([(0, 1), (1, 0), (1, 1)], color="blue")

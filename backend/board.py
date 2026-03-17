@@ -10,17 +10,17 @@ class Board:
 
     def cells(self):
         """
-        Returns a list of all board coordinates as (i,j) tuples.
+        Returns a list of all non-obstacle board coordinates as (i, j) tuples.
         """
         return [(i, j) for i in range(self.height) for j in range(self.width) if (i, j) not in self.obstacles]
 
     def in_bounds(self, i, j):
         return 0 <= i < self.height and 0 <= j < self.width and (i, j) not in self.obstacles
 
-    def addObstacles(self, obstacle_positions):
+    def add_obstacles(self, obstacle_positions):
         """
         Add obstacles to the board at specified positions.
-        
+
         Args:
             obstacle_positions: A list of (i, j) tuples representing obstacle positions.
         """
@@ -31,39 +31,37 @@ class Board:
             else:
                 raise ValueError(f"Obstacle position {position} is out of bounds.")
 
-    def clearObstacles(self):
-        """
-        Remove all obstacles from the board.
-        """
+    def clear_obstacles(self):
+        """Remove all obstacles from the board."""
         self.obstacles.clear()
 
-    def removeObstacle(self, position):
+    def remove_obstacle(self, position):
         """
         Remove a specific obstacle from the board.
-        
+
         Args:
             position: An (i, j) tuple representing the obstacle position to remove.
         """
         if position in self.obstacles:
             self.obstacles.remove(position)
 
-    def getObstacles(self):
+    def get_obstacles(self):
         """
         Returns a list of all obstacle positions on the board.
-        
+
         Returns:
             A list of (i, j) tuples representing obstacle positions.
         """
         return list(self.obstacles)
 
-    def isObstacle(self, i, j):
+    def is_obstacle(self, i, j):
         """
         Check if a position is blocked by an obstacle.
-        
+
         Args:
             i: Row coordinate
             j: Column coordinate
-            
+
         Returns:
             True if the position is an obstacle, False otherwise.
         """
@@ -72,7 +70,7 @@ class Board:
     def count_obstacles(self):
         """
         Returns the number of obstacles on the board.
-        
+
         Returns:
             Integer count of obstacles.
         """

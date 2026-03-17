@@ -5,6 +5,10 @@ from backend.piece import Piece
 #A piece contains the coordinates in which the piece is placed from
 #Imagine if the piece was placed at the top left corner of the board (0,0)
 #The coordinates are then the cells in the board the piece would cover.
+# NOTE: Some pieces below have identical shapes but different colors (e.g., a/c,
+# b/d, e/f/g/h in mainPieceLibrary). This is intentional — they represent
+# distinct game pieces that happen to share a shape. The solver's
+# group_equivalent_pieces() handles deduplication automatically at solve-time.
 mainPieceLibrary = {
     "a" : Piece([(0, 0), (0, 1), (1, 1)], color="red"),
     "b" : Piece([(0, 0), (1, 0), (1, 1)], color="blue"),

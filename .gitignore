@@ -47,4 +47,5 @@ digest.txt
 *.log 
 
 # JSON Storage
-*.json 
+*.json
+*.json.* 
