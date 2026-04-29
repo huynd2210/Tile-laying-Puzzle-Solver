@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pieceId: document.getElementById('piece-id'),
         pieceColor: document.getElementById('piece-color'),
         pieceDesigner: document.getElementById('piece-designer'),
+        pieceGridSize: document.getElementById('piece-grid-size'),
         clearPieceGridBtn: document.getElementById('clear-piece-grid'),
         centerPieceBtn: document.getElementById('center-piece')
     };
@@ -74,6 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.savePieceBtn.addEventListener('click', handleSavePiece);
         elements.clearPieceGridBtn.addEventListener('click', clearPieceDesigner);
         elements.centerPieceBtn.addEventListener('click', centerPieceDesign);
+        if (elements.pieceGridSize) {
+            elements.pieceGridSize.addEventListener('change', handleGridSizeChange);
+        }
         document.getElementById('load-saved-solution').addEventListener('click', loadSavedSolution);
         document.getElementById('view-normal').addEventListener('change', handlePieceViewChange);
         document.getElementById('view-canonical').addEventListener('change', handlePieceViewChange);
@@ -657,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize the piece designer grid
-    function initializePieceDesigner() {
+    function initializePieceDesigner(keepState = false) {
         const designer = elements.pieceDesigner;
         designer.style.gridTemplateColumns = `repeat(${state.designerPiece.gridSize}, 30px)`;
         designer.innerHTML = '';
@@ -679,11 +683,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Reset designer piece state
-        state.designerPiece.cells = [];
-        elements.pieceId.value = '';
-        elements.pieceColor.value = 'red';
-        state.designerPiece.color = 'red';
+        if (!keepState) {
+            // Reset designer piece state
+            state.designerPiece.cells = [];
+            elements.pieceId.value = '';
+            elements.pieceColor.value = 'red';
+            state.designerPiece.color = 'red';
+        } else {
+            // Filter out-of-bounds cells
+            state.designerPiece.cells = state.designerPiece.cells.filter(c => 
+                c[0] < state.designerPiece.gridSize && c[1] < state.designerPiece.gridSize
+            );
+            updateDesignerUI();
+        }
+    }
+
+    function handleGridSizeChange() {
+        const val = parseInt(elements.pieceGridSize.value);
+        if (!isNaN(val) && val >= 3 && val <= 30) {
+            state.designerPiece.gridSize = val;
+            initializePieceDesigner(true);
+        }
     }
 
     // Toggle a cell in the piece designer

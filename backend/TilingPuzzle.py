@@ -183,11 +183,13 @@ class TilingPuzzle:
 
         try:
             run_solver(solver_kwargs)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Solver {solver_kwargs.get('name')} failed: {e}")
             try:
                 solver_kwargs['name'] = 'cadical'
                 run_solver(solver_kwargs)
-            except Exception:
+            except Exception as e2:
+                logger.warning(f"Solver cadical failed: {e2}")
                 solver_kwargs['name'] = 'minisat22'
                 run_solver(solver_kwargs)
 
