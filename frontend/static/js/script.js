@@ -533,13 +533,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const grid = document.createElement('div');
             grid.className = 'piece-grid';
-            grid.style.gridTemplateColumns = `repeat(${maxJ}, 20px)`;
+            
+            // Dynamically scale piece cells so large pieces fit into a "card"
+            let cellSize = 20;
+            const maxDim = Math.max(maxI, maxJ);
+            if (maxDim > 4) {
+                // Max size ~80px for the grid
+                cellSize = Math.max(4, Math.floor(80 / maxDim));
+            }
+            
+            grid.style.gridTemplateColumns = `repeat(${maxJ}, ${cellSize}px)`;
             
             // Create and fill grid cells for the piece
             for (let i = 0; i < maxI; i++) {
                 for (let j = 0; j < maxJ; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'piece-cell';
+                    cell.style.width = `${cellSize}px`;
+                    cell.style.height = `${cellSize}px`;
                     
                     // Check if any offset matches this position
                     const hasCell = offsets.some(offset => {
