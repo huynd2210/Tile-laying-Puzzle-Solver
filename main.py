@@ -1,4 +1,5 @@
 from backend.TilingPuzzle import TilingPuzzle
+from backend.PySatSolver import PySatSolver
 from backend.board import Board
 from backend.pieceLibrary import test_piece_library, patchworkPieceLibrary
 from backend.utils import print_solution_board
@@ -17,7 +18,7 @@ def main():
 
     # Solve the puzzle.
     print("Solving the puzzle ...")
-    solution = puzzle.solve()
+    solution = PySatSolver().solve(puzzle)
 
     if solution is not None:
         print("\nA valid tiling has been found. The placements are:")
@@ -70,7 +71,7 @@ def main_with_obstacles():
 
     # Solve the puzzle
     print("\nSolving the puzzle with obstacles...")
-    solution = puzzle.solve()
+    solution = PySatSolver().solve(puzzle)
 
     if solution is not None:
         print("\nA valid tiling has been found. The placements are:")
@@ -115,7 +116,7 @@ def patchwork():
 
     # Solve the puzzle.
     print("Solving the puzzle ...")
-    solution = puzzle.solve()
+    solution = PySatSolver().solve(puzzle)
 
     if solution is not None:
         print("\nA valid tiling has been found. The placements are:")

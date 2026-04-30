@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render the board with current state
     function renderBoard() {
         const board = elements.board;
-        board.style.gridTemplateColumns = `repeat(${state.width}, 40px)`;
+        board.style.gridTemplateColumns = `repeat(${state.width}, minmax(12px, 40px))`;
         board.innerHTML = '';
         
         for (let i = 0; i < state.height; i++) {

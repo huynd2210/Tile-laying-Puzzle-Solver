@@ -3,6 +3,7 @@ import unittest
 from backend.piece import Piece
 from backend.utils import normalize
 from backend.TilingPuzzle import TilingPuzzle
+from backend.PySatSolver import PySatSolver
 from backend.board import Board
 
 
@@ -131,7 +132,7 @@ class TestTilingWithRotations(unittest.TestCase):
         
         # Create puzzle
         puzzle = TilingPuzzle(board, pieces)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         # There should be a solution
         self.assertIsNotNone(solution, "Puzzle should be solvable with rotations")
@@ -159,7 +160,7 @@ class TestTilingWithRotations(unittest.TestCase):
         
         # Create puzzle
         puzzle = TilingPuzzle(board, pieces)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         # There might be a solution depending on whether reflections are allowed
         if solution:

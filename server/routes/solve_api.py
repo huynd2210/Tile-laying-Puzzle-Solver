@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 
 from backend.board import Board
 from backend.TilingPuzzle import TilingPuzzle
+from backend.PySatSolver import PySatSolver
 from backend.pieceLibrary import test_piece_library
 from server.services.solver_service import JSONPieceAdapter, group_equivalent_pieces
 from server.json_storage import (
@@ -189,7 +190,8 @@ def solve_puzzle():
         )
 
         puzzle = TilingPuzzle(board, lib_for_solver)
-        solutions = puzzle.solve(max_solutions=params['max_solutions'], threads=params['threads'])
+        solver = PySatSolver()
+        solutions = solver.solve(puzzle, max_solutions=params['max_solutions'], threads=params['threads'])
 
         if not solutions:
             return jsonify({'success': False, 'message': 'No solution found for the given configuration.'})

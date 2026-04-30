@@ -4,13 +4,14 @@ from backend.board import Board
 from backend.piece import Piece
 from backend.CandidatePlacement import CandidatePlacement
 from backend.TilingPuzzle import TilingPuzzle
+from backend.PySatSolver import PySatSolver
 
 
 class TestCandidatePlacement(unittest.TestCase):
     def test_compute_cells(self):
         # Orientation covers (0,0) and (0,1)
         orientation = ((0, 0), (0, 1))
-        cand = CandidatePlacement('X', orientation, (2, 3), 1)
+        cand = CandidatePlacement('X', orientation, (2, 3))
         # Should translate by base position
         self.assertEqual(cand.cells, ((2, 3), (2, 4)))
 
@@ -23,7 +24,7 @@ class TestSolveBasics(unittest.TestCase):
             'T': Piece([(0, 0), (0, 1), (0, 2)]),  # length-3 line
         }
         puzzle = TilingPuzzle(board, pieces)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         self.assertIsNone(solution)
 
     def test_multiple_solutions_enumeration(self):
@@ -35,7 +36,7 @@ class TestSolveBasics(unittest.TestCase):
             'B': Piece([(0, 0)]),  # another single cell (identical shape but distinct id)
         }
         puzzle = TilingPuzzle(board, pieces)
-        solutions = puzzle.solve(max_solutions=2)
+        solutions = PySatSolver().solve(puzzle, max_solutions=2)
         # Should enumerate up to 2 solutions
         self.assertIsInstance(solutions, list)
         self.assertLessEqual(len(solutions), 2)
@@ -49,7 +50,7 @@ class TestSolveBasics(unittest.TestCase):
             'B': Piece([(0, 0)]),
         }
         puzzle = TilingPuzzle(board, pieces)
-        solutions = puzzle.solve(max_solutions=0)
+        solutions = PySatSolver().solve(puzzle, max_solutions=0)
         self.assertIsInstance(solutions, list)
         self.assertGreaterEqual(len(solutions), 2)
 
@@ -63,7 +64,7 @@ class TestSolveBasics(unittest.TestCase):
             'B': Piece([(0, 0)]),
         }
         puzzle = TilingPuzzle(board, pieces)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         self.assertIsNotNone(solution)
         if solution:
             # Should cover exactly the single cell once
@@ -82,7 +83,7 @@ class TestSolveBasics(unittest.TestCase):
         }
         puzzle = TilingPuzzle(board, pieces)
         # Try with threads=2 (may fall back if solver doesn't support threads)
-        sols = puzzle.solve(max_solutions=2, threads=2)
+        sols = PySatSolver().solve(puzzle, max_solutions=2, threads=2)
         self.assertIsInstance(sols, list)
 
 

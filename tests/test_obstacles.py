@@ -3,6 +3,7 @@ import unittest
 from backend.board import Board
 from backend.piece import Piece
 from backend.TilingPuzzle import TilingPuzzle
+from backend.PySatSolver import PySatSolver
 from backend.pieceLibrary import test_piece_library
 
 
@@ -133,7 +134,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
     def test_solution_with_obstacles(self):
         """Test that solving respects obstacles."""
         puzzle = TilingPuzzle(self.board, self.piece_lib)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         # Make sure a solution was found
         self.assertIsNotNone(solution, "Failed to find a solution with obstacles")
@@ -161,7 +162,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         board.add_obstacles(row_obstacles)
         
         puzzle = TilingPuzzle(board, self.piece_lib)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         if solution:
             # If a solution exists, verify it doesn't cover obstacles
@@ -175,7 +176,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         board.add_obstacles(col_obstacles)
         
         puzzle = TilingPuzzle(board, self.piece_lib)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         if solution:
             # If a solution exists, verify it doesn't cover obstacles
@@ -202,7 +203,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         }
         
         puzzle = TilingPuzzle(board, custom_lib)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         
         # Check candidates respect obstacles
         for candidate in puzzle.candidates:
@@ -243,7 +244,7 @@ class TestTilingPuzzleWithObstacles(unittest.TestCase):
         
         # Previously, this would produce 0 candidates and fail
         self.assertEqual(len(puzzle.candidates), 1)
-        solution = puzzle.solve()
+        solution = PySatSolver().solve(puzzle)
         self.assertIsNotNone(solution, "Should find a solution around the obstacle")
         self.assertEqual(len(solution), 1)
 
